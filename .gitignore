@@ -216,3 +216,18 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# --- synapses project-specific -----------------------------------------------
+# Datasets and generated artifacts (large / regenerable)
+data/
+outputs/
+*.ckpt
+*.pt
+*.pth
+*.safetensors
+generated_image.png
+
+# macOS
+.DS_Store
+.vscode
+.obsidian
