@@ -15,7 +15,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# Embedding visualization (t-SNE / UMAP) for weeks 1–2
+# Embedding visualization (t-SNE / UMAP) for phases 1–2
 # Floor umap-learn/numba/llvmlite to versions that ship 3.12 wheels
 # (older llvmlite has no wheel and won't build on 3.12).
 viz = [
@@ -24,7 +24,7 @@ viz = [
     "llvmlite>=0.43",
     "seaborn>=0.13",
 ]
-# Weeks 3–4: SAEs + mechanistic interpretability
+# Phases 3–4: SAEs + mechanistic interpretability
 interp = [
     "transformers>=4.44",
     "datasets>=2.20",
