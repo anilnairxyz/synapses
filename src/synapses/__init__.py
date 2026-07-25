@@ -6,7 +6,7 @@ from synapses.extract import encode_latents
 from synapses.losses import VAELoss, vae_loss
 from synapses.run import RunLogger, set_seed
 from synapses.vae import MLPVAE, load_vae
-from synapses.viz import latent_scatter
+from synapses.viz import latent_grid_coords, latent_scatter, manifold_grid
 
 __all__ = [
     "get_device",
@@ -21,4 +21,6 @@ __all__ = [
     "RunLogger",
     "encode_latents",
     "latent_scatter",
+    "latent_grid_coords",
+    "manifold_grid",
 ]

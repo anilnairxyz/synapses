@@ -113,3 +113,64 @@ def _halo():
     import matplotlib.patheffects as pe
 
     return [pe.withStroke(linewidth=2.5, foreground="white")]
+
+
+def latent_grid_coords(
+    n: int = 20, prob_range: tuple[float, float] = (0.005, 0.995)
+) -> torch.Tensor:
+    """1D grid of ``n`` coordinates spaced by the standard-normal inverse CDF.
+
+    Uniform spacing in ``z`` (e.g. ``linspace(-3, 3)``) oversamples the low-probability
+    tails, where the model saw almost no data — so a grid built that way decodes to
+    garbage in the corners. Spacing by the prior's inverse CDF instead gives each cell
+    equal prior probability: points bunch near 0 and spread out in the tails, matching
+    where the digits actually live. Returned ascending.
+    """
+    probs = torch.linspace(prob_range[0], prob_range[1], n)
+    return torch.distributions.Normal(0.0, 1.0).icdf(probs)
+
+
+def manifold_grid(
+    model: MLPVAE,
+    device: torch.device | str,
+    n: int = 20,
+    prob_range: tuple[float, float] = (0.005, 0.995),
+    image_shape: tuple[int, int] = (28, 28),
+    ax: plt.Axes | None = None,
+    title: str | None = None,
+) -> plt.Axes:
+    """Decode an ``n x n`` inverse-CDF grid of latent points into one tiled image.
+
+    Shows what the decoder generates at every point in the 2D latent space — the
+    "manifold." Complements :func:`latent_scatter` (which shows where real data landed):
+    same latent coordinates, same orientation, so the two read together.
+    """
+    if model.latent_dim != 2:
+        raise ValueError(
+            f"manifold_grid needs a 2D latent, got latent_dim={model.latent_dim}. "
+            "Grid decoding only makes sense in 2D."
+        )
+
+    coords = latent_grid_coords(n, prob_range)  # ascending, shape (n,)
+    # z1 varies across columns, z2 up rows. meshgrid with z2 descending so that when we
+    # place row 0 at the top of the array and imshow with origin="lower", z2 increases up.
+    z2, z1 = torch.meshgrid(coords.flip(0), coords, indexing="ij")
+    z = torch.stack([z1.reshape(-1), z2.reshape(-1)], dim=1).to(device)
+
+    with torch.no_grad():
+        probs = torch.sigmoid(model.decode(z)).cpu()  # (n*n, 784)
+
+    h, w = image_shape
+    # Reshape to (n, n, h, w) then tile into (n*h, n*w).
+    tile = probs.view(n, n, h, w).permute(0, 2, 1, 3).reshape(n * h, n * w).numpy()
+
+    if ax is None:
+        _, ax = plt.subplots(figsize=(8, 8))
+
+    lo, hi = coords[0].item(), coords[-1].item()
+    ax.imshow(tile, cmap="gray_r", origin="lower", extent=[lo, hi, lo, hi])
+    ax.set_xlabel("$z_1$")
+    ax.set_ylabel("$z_2$")
+    if title:
+        ax.set_title(title)
+    return ax

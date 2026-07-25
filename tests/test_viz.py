@@ -19,7 +19,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from synapses.extract import encode_latents
 from synapses.run import save_checkpoint
 from synapses.vae import MLPVAE, load_vae
-from synapses.viz import DIGIT_PALETTE, latent_scatter
+from synapses.viz import DIGIT_PALETTE, latent_grid_coords, latent_scatter, manifold_grid
 
 DIM, LATENT = 784, 2
 
@@ -104,3 +104,31 @@ def test_latent_scatter_builds_with_legend_and_prior():
 def test_latent_scatter_rejects_non_2d():
     with pytest.raises(ValueError, match="2D latents"):
         latent_scatter(torch.randn(10, 8), torch.zeros(10, dtype=torch.long))
+
+
+def test_latent_grid_coords_spacing():
+    """Inverse-CDF grid: right length, monotonic, symmetric, denser near 0 than the ends."""
+    n = 21
+    coords = latent_grid_coords(n)
+    assert coords.shape == (n,)
+    assert torch.isfinite(coords).all()
+    assert (coords[1:] > coords[:-1]).all()  # strictly increasing
+    torch.testing.assert_close(coords, -coords.flip(0), atol=1e-5, rtol=0)  # symmetric about 0
+    # equal-probability spacing => steps near the center are smaller than steps at the tails
+    steps = coords[1:] - coords[:-1]
+    assert steps[n // 2] < steps[0]
+
+
+def test_manifold_grid_builds_and_tiles():
+    torch.manual_seed(0)
+    model = MLPVAE(DIM, hidden_dim=32, latent_dim=2).eval()
+    n = 8
+    ax = manifold_grid(model, device="cpu", n=n)
+    assert len(ax.images) == 1
+    assert ax.images[0].get_array().shape == (n * 28, n * 28)
+
+
+def test_manifold_grid_rejects_non_2d():
+    model = MLPVAE(DIM, hidden_dim=32, latent_dim=8).eval()
+    with pytest.raises(ValueError, match="2D latent"):
+        manifold_grid(model, device="cpu", n=4)
