@@ -115,6 +115,78 @@ def _halo():
     return [pe.withStroke(linewidth=2.5, foreground="white")]
 
 
+# Single accent color for one-measure bar charts (not the categorical palette).
+ACCENT = "#4477AA"
+
+
+def image_grid(
+    images: torch.Tensor | np.ndarray,
+    nrow: int,
+    ncol: int,
+    row_labels: list[str] | None = None,
+    image_shape: tuple[int, int] = (28, 28),
+    ax: plt.Axes | None = None,
+    title: str | None = None,
+) -> plt.Axes:
+    """Tile ``nrow*ncol`` images into one grayscale montage.
+
+    ``images`` is ``(nrow*ncol, H*W)`` or ``(nrow*ncol, H, W)`` in row-major order
+    (row 0 first). ``row_labels`` (length ``nrow``) annotates each row on the left —
+    e.g. the target digit for Step 4 sample grids.
+    """
+    imgs = _to_numpy(images)
+    h, w = image_shape
+    imgs = imgs.reshape(nrow, ncol, h, w)
+    tile = imgs.transpose(0, 2, 1, 3).reshape(nrow * h, ncol * w)
+
+    if ax is None:
+        _, ax = plt.subplots(figsize=(ncol * 0.6, nrow * 0.6))
+    ax.imshow(tile, cmap="gray_r", origin="upper")
+    ax.set_xticks([])
+    if row_labels is not None:
+        ax.set_yticks([h * (i + 0.5) for i in range(nrow)])
+        ax.set_yticklabels(row_labels)
+    else:
+        ax.set_yticks([])
+    if title:
+        ax.set_title(title)
+    return ax
+
+
+def bar_by_class(
+    values: torch.Tensor | np.ndarray,
+    ylabel: str,
+    ax: plt.Axes | None = None,
+    title: str | None = None,
+    as_percent: bool = False,
+) -> plt.Axes:
+    """Single-series bar over classes 0..N-1 (magnitude by category).
+
+    One accent color (not the categorical palette — this encodes magnitude, not
+    identity), values printed above each bar, recessive axes.
+    """
+    vals = _to_numpy(values).astype(float)
+    n = len(vals)
+    x = np.arange(n)
+
+    if ax is None:
+        _, ax = plt.subplots(figsize=(7, 4))
+    ax.bar(x, vals, color=ACCENT, width=0.8)
+    for xi, v in zip(x, vals):
+        label = f"{v * 100:.0f}%" if as_percent else f"{v:g}"
+        ax.text(xi, v, label, ha="center", va="bottom", fontsize=8, color="0.2")
+
+    ax.set_xticks(x)
+    ax.set_xlabel("digit")
+    ax.set_ylabel(ylabel)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.margins(y=0.15)
+    if title:
+        ax.set_title(title)
+    return ax
+
+
 def latent_grid_coords(
     n: int = 20, prob_range: tuple[float, float] = (0.005, 0.995)
 ) -> torch.Tensor:

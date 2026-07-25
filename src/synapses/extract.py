@@ -45,3 +45,23 @@ def encode_latents(
         labels.append(y.cpu())
 
     return torch.cat(codes, dim=0), torch.cat(labels, dim=0)
+
+
+def class_means(
+    codes: torch.Tensor, labels: torch.Tensor, n_classes: int = 10
+) -> torch.Tensor:
+    """Per-class centroid of latent codes: ``μ̄_c`` for each ``c``.
+
+    Args:
+        codes: ``(N, L)`` latent codes.
+        labels: ``(N,)`` integer class labels.
+
+    Returns:
+        ``(n_classes, L)``. A class with no samples yields a zero row.
+    """
+    means = torch.zeros(n_classes, codes.size(1), dtype=codes.dtype)
+    for c in range(n_classes):
+        m = labels == c
+        if m.any():
+            means[c] = codes[m].mean(dim=0)
+    return means
