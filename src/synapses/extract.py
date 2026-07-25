@@ -33,18 +33,39 @@ def encode_latents(
     Returns:
         ``(codes, labels)`` on CPU, shapes ``(N, L)`` and ``(N,)``.
     """
+    mu, logvar, labels = encode_moments(model, loader, device)
+    codes = model.reparameterize(mu, logvar) if sample else mu
+    return codes, labels
+
+
+@torch.no_grad()
+def encode_moments(
+    model: MLPVAE,
+    loader: torch.utils.data.DataLoader,
+    device: torch.device | str,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Encode a whole dataset to its posterior parameters.
+
+    Like :func:`encode_latents` but returns both ``mu`` and ``logvar`` — needed for
+    per-dimension KL and active units (Step 5), where the probe reads ``mu`` and the
+    rate metrics read both.
+
+    Returns:
+        ``(mu, logvar, labels)`` on CPU, shapes ``(N, L)``, ``(N, L)``, ``(N,)``.
+    """
     model.eval()
-    codes: list[torch.Tensor] = []
+    mus: list[torch.Tensor] = []
+    logvars: list[torch.Tensor] = []
     labels: list[torch.Tensor] = []
 
     for x, y in loader:
         x = x.to(device, non_blocking=True).view(x.size(0), -1)
         mu, logvar = model.encode(x)
-        z = model.reparameterize(mu, logvar) if sample else mu
-        codes.append(z.cpu())
+        mus.append(mu.cpu())
+        logvars.append(logvar.cpu())
         labels.append(y.cpu())
 
-    return torch.cat(codes, dim=0), torch.cat(labels, dim=0)
+    return torch.cat(mus), torch.cat(logvars), torch.cat(labels)
 
 
 def class_means(

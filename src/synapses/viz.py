@@ -119,6 +119,71 @@ def _halo():
 ACCENT = "#4477AA"
 
 
+def line_plot(
+    x: list | np.ndarray,
+    series: dict[str, list | np.ndarray],
+    xlabel: str,
+    ylabel: str,
+    ax: plt.Axes | None = None,
+    title: str | None = None,
+    logx: bool = False,
+    baselines: dict[str, float] | None = None,
+) -> plt.Axes:
+    """Multi-series line+marker plot on one axis.
+
+    ``series`` maps name -> y-values (all against the shared ``x``). ``baselines`` maps
+    name -> a constant, drawn as a horizontal dashed reference (e.g. the raw-pixel probe).
+    A legend appears whenever there is more than one line in total.
+    """
+    if ax is None:
+        _, ax = plt.subplots(figsize=(6, 4))
+
+    for i, (name, y) in enumerate(series.items()):
+        ax.plot(x, _to_numpy(y), marker="o", linewidth=2,
+                color=DIGIT_PALETTE[i % len(DIGIT_PALETTE)], label=name)
+    if baselines:
+        for name, val in baselines.items():
+            ax.axhline(val, linestyle="--", linewidth=1.2, color="0.5", label=name)
+
+    if logx:
+        ax.set_xscale("log", base=2)
+        ax.set_xticks(list(x))
+        ax.set_xticklabels([str(v) for v in x])
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.grid(True, linewidth=0.3, alpha=0.3)
+    if len(series) + (len(baselines) if baselines else 0) > 1:
+        ax.legend(fontsize=8)
+    if title:
+        ax.set_title(title)
+    return ax
+
+
+def kl_spectrum_bar(
+    values: torch.Tensor | np.ndarray,
+    ax: plt.Axes | None = None,
+    title: str | None = None,
+) -> plt.Axes:
+    """Per-dimension KL, sorted descending — the rate each latent dim carries.
+
+    At large L most bars sit at ~zero: the model uses a handful of dims and discards the
+    rest. This is the information bottleneck made visible.
+    """
+    vals = np.sort(_to_numpy(values).astype(float))[::-1]
+    if ax is None:
+        _, ax = plt.subplots(figsize=(6, 4))
+    ax.bar(np.arange(len(vals)), vals, color=ACCENT, width=1.0)
+    ax.set_xlabel("latent dim (sorted)")
+    ax.set_ylabel("KL (nats)")
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    if title:
+        ax.set_title(title)
+    return ax
+
+
 def image_grid(
     images: torch.Tensor | np.ndarray,
     nrow: int,

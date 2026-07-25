@@ -67,7 +67,6 @@ def mnist_loaders(
         pin_memory = torch.cuda.is_available()
 
     train_set = _load_split(root, train=True, download=download)
-    test_set = _load_split(root, train=False, download=download)
 
     train_loader = DataLoader(
         train_set,
@@ -79,17 +78,45 @@ def mnist_loaders(
         generator=torch.Generator().manual_seed(seed),
     )
 
-    # Fixed binarization of the whole test split, done once. 10k x 784 floats is ~31 MB.
-    test_x = torch.stack([img for img, _ in test_set]).view(len(test_set), -1)
-    test_y = torch.tensor([label for _, label in test_set])
-    fixed_gen = torch.Generator().manual_seed(test_binarize_seed)
-    test_x = binarize(test_x, generator=fixed_gen)
-
-    test_loader = DataLoader(
-        TensorDataset(test_x, test_y),
+    test_loader = fixed_binarized_loader(
+        root,
+        train=False,
         batch_size=batch_size,
-        shuffle=False,
-        num_workers=0,  # already in memory
+        seed=test_binarize_seed,
+        download=download,
         pin_memory=pin_memory,
     )
     return train_loader, test_loader
+
+
+def fixed_binarized_loader(
+    root: str = "data",
+    train: bool = False,
+    batch_size: int = 256,
+    seed: int = 1234,
+    num_workers: int = 0,
+    download: bool = False,
+    pin_memory: bool | None = None,
+) -> DataLoader:
+    """A loader of **fixed-binarized, flattened** images ``(B, 784)`` plus labels.
+
+    Binarizes the whole split once with a dedicated seed, then serves it from memory —
+    a stable ruler, unlike the dynamically-binarized training stream. Used for the VAE
+    test metric and (for both splits) the Step 5 linear probe, which needs the train
+    images binarized the same way the model sees them.
+    """
+    if pin_memory is None:
+        pin_memory = torch.cuda.is_available()
+
+    dataset = _load_split(root, train=train, download=download)
+    x = torch.stack([img for img, _ in dataset]).view(len(dataset), -1)
+    y = torch.tensor([label for _, label in dataset])
+    x = binarize(x, generator=torch.Generator().manual_seed(seed))
+
+    return DataLoader(
+        TensorDataset(x, y),
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,  # already in memory
+        pin_memory=pin_memory,
+    )
