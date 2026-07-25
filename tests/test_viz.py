@@ -10,6 +10,8 @@ import matplotlib
 
 matplotlib.use("Agg")  # headless
 
+from dataclasses import dataclass
+
 import pytest
 import torch
 from torch.utils.data import DataLoader, TensorDataset
@@ -22,12 +24,13 @@ from synapses.viz import DIGIT_PALETTE, latent_scatter
 DIM, LATENT = 784, 2
 
 
+@dataclass
 class _Cfg:
-    """Minimal stand-in for Phase1Config — save_checkpoint stores it via _to_plain."""
+    """Stand-in for Phase1Config. A dataclass, like the real one — so save_checkpoint's
+    _to_plain serializes it to a dict, which is what load_vae reads back."""
 
-    def __init__(self, latent_dim, hidden_dim):
-        self.latent_dim = latent_dim
-        self.hidden_dim = hidden_dim
+    latent_dim: int
+    hidden_dim: int
 
 
 def _fake_loader(n=200, n_classes=10, batch_size=64):
