@@ -2,7 +2,7 @@
 
 A personal exploration of frontier AI — **Representation Learning** and **Mechanistic Interpretability**. The goal is to learn deeply and start contributing to research, not to build products.
 
-See [`docs/plan_12-07-2026.md`](docs/plan_12-07-2026.md) for the full phased plan.
+See [`docs/plan_12-07-2026.md`](epic1_plan_12-07-2026.md) for the full phased plan.
 
 ## Hardware & Dev Setup
 

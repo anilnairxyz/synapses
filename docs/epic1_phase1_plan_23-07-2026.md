@@ -1,6 +1,6 @@
 # Phase 1 — Learn a Representation (Detailed Plan)
 
-Detail for **Phase 1** of [`plan_12-07-2026.md`](plan_12-07-2026.md). Phases 1–4 are the
+Detail for **Phase 1** of [`plan_12-07-2026.md`](epic1_plan_12-07-2026.md). Phases 1–4 are the
 top-level arc; the numbered **Steps** below are the units of work inside Phase 1.
 
 **Phase question:** what information does a learned representation preserve, what does it

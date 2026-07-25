@@ -18,6 +18,8 @@ from __future__ import annotations
 import torch
 from torch import nn
 
+from synapses.run import load_checkpoint
+
 
 class MLPVAE(nn.Module):
     """Gaussian-posterior, Bernoulli-likelihood VAE over flattened MNIST."""
@@ -77,3 +79,23 @@ class MLPVAE(nn.Module):
         """Decode ``n`` draws from the prior ``N(0, I)`` into probabilities."""
         z = torch.randn(n, self.latent_dim, device=device)
         return torch.sigmoid(self.decode(z))
+
+
+def load_vae(ckpt_path: str, device: torch.device | str = "cpu") -> tuple[MLPVAE, dict]:
+    """Rebuild a trained MLPVAE from a checkpoint written by ``save_checkpoint``.
+
+    Reads the stored config to construct the model at the right shape, restores the
+    weights, moves it to ``device``, and puts it in eval mode. Returns ``(model, config)``
+    — every later Phase 1 step (manifold decode, class sampling, sweeps, feature
+    emergence) reloads a trained model this way.
+    """
+    ckpt = load_checkpoint(ckpt_path, map_location=device)
+    cfg = ckpt["config"]
+    model = MLPVAE(
+        input_dim=cfg.get("input_dim", 784),
+        hidden_dim=cfg["hidden_dim"],
+        latent_dim=cfg["latent_dim"],
+    )
+    model.load_state_dict(ckpt["model"])
+    model.to(device).eval()
+    return model, cfg
