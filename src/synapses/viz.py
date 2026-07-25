@@ -152,8 +152,10 @@ def manifold_grid(
         )
 
     coords = latent_grid_coords(n, prob_range)  # ascending, shape (n,)
-    # z1 varies across columns, z2 up rows. meshgrid with z2 descending so that when we
-    # place row 0 at the top of the array and imshow with origin="lower", z2 increases up.
+    # z1 across columns (ascending, left->right), z2 up rows. Put the highest z2 in row 0
+    # so that with imshow's default origin="upper" it renders at the top — this keeps each
+    # digit upright (origin="lower" would flip every glyph vertically) while still giving
+    # a z2-increases-upward axis.
     z2, z1 = torch.meshgrid(coords.flip(0), coords, indexing="ij")
     z = torch.stack([z1.reshape(-1), z2.reshape(-1)], dim=1).to(device)
 
@@ -168,7 +170,10 @@ def manifold_grid(
         _, ax = plt.subplots(figsize=(8, 8))
 
     lo, hi = coords[0].item(), coords[-1].item()
-    ax.imshow(tile, cmap="gray_r", origin="lower", extent=[lo, hi, lo, hi])
+    # origin="upper" (default): row 0 -> top. Row 0 holds the highest z2 (see meshgrid
+    # above), and extent's top edge is `hi`, so z2 still increases upward and glyphs stay
+    # upright. imshow places the highest-z2 row at the top edge, matching the y axis.
+    ax.imshow(tile, cmap="gray_r", origin="upper", extent=[lo, hi, lo, hi])
     ax.set_xlabel("$z_1$")
     ax.set_ylabel("$z_2$")
     if title:
