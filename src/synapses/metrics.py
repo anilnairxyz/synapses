@@ -14,6 +14,8 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
+from synapses.losses import vae_loss
+
 
 def kl_per_dim(mu: torch.Tensor, logvar: torch.Tensor) -> torch.Tensor:
     """Per-dimension KL to N(0, I), averaged over the batch. Shape ``(L,)``.
@@ -31,6 +33,52 @@ def active_units(mu: torch.Tensor, threshold: float = 0.01) -> int:
     ``threshold`` — a collapsed dim outputs a near-constant mu and carries no information.
     """
     return int((mu.var(dim=0) > threshold).sum().item())
+
+
+@torch.no_grad()
+def evaluate_vae(
+    model,
+    loader: torch.utils.data.DataLoader,
+    device: torch.device | str,
+) -> dict:
+    """One pass over a dataset -> the VAE's core metrics.
+
+    Recon and KL are reported at β=1 regardless of the model's training β, so the numbers
+    are comparable across an L-sweep or a β-sweep. Returns recon, kl, elbo (all
+    nats/image), the sorted-later per-dim KL, active-unit count, and the collected ``mu``
+    and ``labels`` (for a downstream probe).
+    """
+    model.eval()
+    recon_sum = kl_sum = 0.0
+    n = 0
+    mus: list[torch.Tensor] = []
+    logvars: list[torch.Tensor] = []
+    labels: list[torch.Tensor] = []
+
+    for x, y in loader:
+        x = x.to(device, non_blocking=True).view(x.size(0), -1)
+        logits, mu, logvar = model(x)
+        out = vae_loss(logits, x, mu, logvar, beta=1.0)
+        bs = x.size(0)
+        recon_sum += out.recon.item() * bs
+        kl_sum += out.kl.item() * bs
+        n += bs
+        mus.append(mu.cpu())
+        logvars.append(logvar.cpu())
+        labels.append(y.cpu())
+
+    mu_all = torch.cat(mus)
+    logvar_all = torch.cat(logvars)
+    recon, kl = recon_sum / n, kl_sum / n
+    return {
+        "recon": recon,
+        "kl": kl,
+        "elbo": -(recon + kl),
+        "kl_per_dim": kl_per_dim(mu_all, logvar_all).tolist(),
+        "active_units": active_units(mu_all),
+        "mu": mu_all,
+        "labels": torch.cat(labels),
+    }
 
 
 def linear_probe(

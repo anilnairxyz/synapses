@@ -5,7 +5,7 @@ from synapses.data import binarize, fixed_binarized_loader, mnist_loaders
 from synapses.device import device_report, get_device
 from synapses.extract import class_means, encode_latents, encode_moments
 from synapses.losses import VAELoss, vae_loss
-from synapses.metrics import active_units, kl_per_dim, linear_probe
+from synapses.metrics import active_units, evaluate_vae, kl_per_dim, linear_probe
 from synapses.run import RunLogger, set_seed
 from synapses.vae import MLPVAE, load_vae
 from synapses.viz import (
@@ -16,6 +16,7 @@ from synapses.viz import (
     latent_scatter,
     line_plot,
     manifold_grid,
+    rate_distortion_plot,
 )
 
 __all__ = [
@@ -36,6 +37,7 @@ __all__ = [
     "active_units",
     "kl_per_dim",
     "linear_probe",
+    "evaluate_vae",
     "latent_scatter",
     "latent_grid_coords",
     "manifold_grid",
@@ -43,6 +45,7 @@ __all__ = [
     "bar_by_class",
     "line_plot",
     "kl_spectrum_bar",
+    "rate_distortion_plot",
     "SmallCNN",
     "load_classifier",
     "classify",

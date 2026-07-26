@@ -14,9 +14,9 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from synapses.extract import encode_moments
 from synapses.losses import vae_loss
-from synapses.metrics import active_units, kl_per_dim, linear_probe
+from synapses.metrics import active_units, evaluate_vae, kl_per_dim, linear_probe
 from synapses.vae import MLPVAE
-from synapses.viz import kl_spectrum_bar, line_plot
+from synapses.viz import kl_spectrum_bar, line_plot, rate_distortion_plot
 
 DIM, LATENT = 784, 8
 
@@ -61,6 +61,35 @@ def test_encode_moments_shapes():
     assert mu.shape == (120, LATENT)
     assert logvar.shape == (120, LATENT)
     assert labels.shape == (120,)
+
+
+def test_evaluate_vae_keys_and_matches_vae_loss():
+    torch.manual_seed(0)
+    model = MLPVAE(DIM, hidden_dim=32, latent_dim=LATENT).eval()
+    x = torch.bernoulli(torch.rand(96, DIM))
+    y = torch.randint(0, 10, (96,))
+    loader = DataLoader(TensorDataset(x, y), batch_size=96)  # single batch
+
+    m = evaluate_vae(model, loader, device="cpu")
+    for key in ("recon", "kl", "elbo", "kl_per_dim", "active_units", "mu", "labels"):
+        assert key in m
+    assert m["mu"].shape == (96, LATENT)
+    assert len(m["kl_per_dim"]) == LATENT
+    assert m["elbo"] == pytest.approx(-(m["recon"] + m["kl"]), rel=1e-6)
+
+    # KL is deterministic in mu/logvar -> exact match with a direct vae_loss call.
+    # recon carries reparameterization noise, so compare it loosely (still catches a
+    # normalization bug, which would be off by ~784x, not ~1 nat).
+    logits, mu, logvar = model(x)
+    out = vae_loss(logits, x, mu, logvar, beta=1.0)
+    assert m["kl"] == pytest.approx(out.kl.item(), rel=1e-5)
+    assert m["recon"] == pytest.approx(out.recon.item(), abs=5.0)
+
+
+def test_rate_distortion_plot_builds():
+    ax = rate_distortion_plot([90, 70, 145], [16, 30, 6], labels=["β=0.1", "β=1", "β=5"])
+    # one scatter collection with three points
+    assert any(len(c.get_offsets()) == 3 for c in ax.collections)
 
 
 def test_line_plot_and_kl_spectrum_build():

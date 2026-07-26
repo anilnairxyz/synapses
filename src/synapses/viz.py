@@ -161,6 +161,47 @@ def line_plot(
     return ax
 
 
+def rate_distortion_plot(
+    distortion: list | np.ndarray,
+    rate: list | np.ndarray,
+    labels: list,
+    ax: plt.Axes | None = None,
+    title: str | None = None,
+    iso_elbo: bool = True,
+) -> plt.Axes:
+    """The rate-distortion frontier: distortion (x) vs rate (y), one point per model.
+
+    ``labels`` annotates each point (e.g. its β). With ``iso_elbo``, faint diagonals
+    ``D + R = const`` mark equal-ELBO contours — lower-left is better ELBO, and you can
+    read which β is ELBO-optimal off where the frontier touches the innermost diagonal.
+    """
+    d = _to_numpy(distortion).astype(float)
+    r = _to_numpy(rate).astype(float)
+    if ax is None:
+        _, ax = plt.subplots(figsize=(6, 5))
+
+    if iso_elbo:
+        totals = d + r
+        lo, hi = totals.min(), totals.max()
+        xs = np.array([d.min(), d.max()])
+        for c in np.linspace(lo, hi, 5):
+            ax.plot(xs, c - xs, linestyle="--", linewidth=0.8, color="0.8", zorder=1)
+
+    ax.plot(d, r, "-", color="0.6", linewidth=1.0, zorder=2)
+    ax.scatter(d, r, s=40, color=ACCENT, zorder=3)
+    for xi, yi, lab in zip(d, r, labels):
+        ax.annotate(f" {lab}", (xi, yi), fontsize=9, color="0.2",
+                    ha="left", va="bottom")
+
+    ax.set_xlabel("distortion  D = −E[log p(x|z)]  (nats)")
+    ax.set_ylabel("rate  R = E[KL]  (nats)")
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    if title:
+        ax.set_title(title)
+    return ax
+
+
 def kl_spectrum_bar(
     values: torch.Tensor | np.ndarray,
     ax: plt.Axes | None = None,

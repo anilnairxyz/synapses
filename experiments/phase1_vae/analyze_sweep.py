@@ -28,8 +28,7 @@ import torch  # noqa: E402
 from synapses import get_device  # noqa: E402
 from synapses.data import fixed_binarized_loader  # noqa: E402
 from synapses.extract import encode_moments  # noqa: E402
-from synapses.losses import vae_loss  # noqa: E402
-from synapses.metrics import active_units, kl_per_dim, linear_probe  # noqa: E402
+from synapses.metrics import evaluate_vae, linear_probe  # noqa: E402
 from synapses.vae import load_vae  # noqa: E402
 from synapses.viz import kl_spectrum_bar, line_plot  # noqa: E402
 
@@ -44,36 +43,6 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--out-root", type=str, default="outputs")
     p.add_argument("--device", type=str, default=None)
     return p.parse_args()
-
-
-@torch.no_grad()
-def test_metrics(model, loader, device) -> dict:
-    """One pass over the test set: recon & KL (via vae_loss) plus collected moments."""
-    recon_sum = kl_sum = n = 0
-    mus, logvars, labels = [], [], []
-    for x, y in loader:
-        x = x.to(device, non_blocking=True).view(x.size(0), -1)
-        logits, mu, logvar = model(x)
-        out = vae_loss(logits, x, mu, logvar, beta=1.0)
-        bs = x.size(0)
-        recon_sum += out.recon.item() * bs
-        kl_sum += out.kl.item() * bs
-        n += bs
-        mus.append(mu.cpu())
-        logvars.append(logvar.cpu())
-        labels.append(y.cpu())
-    mu = torch.cat(mus)
-    logvar = torch.cat(logvars)
-    recon, kl = recon_sum / n, kl_sum / n
-    return {
-        "recon": recon,
-        "kl": kl,
-        "elbo": -(recon + kl),
-        "kl_per_dim": kl_per_dim(mu, logvar).tolist(),
-        "active_units": active_units(mu),
-        "mu": mu,
-        "labels": torch.cat(labels),
-    }
 
 
 def main() -> None:
@@ -102,7 +71,7 @@ def main() -> None:
                 f"Train it: uv run python experiments/phase1_vae/train.py --latent-dim {L}"
             )
         model, _ = load_vae(str(ckpt), device=device)
-        m = test_metrics(model, test_loader, device)
+        m = evaluate_vae(model, test_loader, device)
         train_mu, _, train_labels = encode_moments(model, train_loader, device)
         probe = linear_probe(train_mu, train_labels, m["mu"], m["labels"])
 
