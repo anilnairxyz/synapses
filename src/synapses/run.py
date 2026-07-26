@@ -60,6 +60,23 @@ def log_spaced_epochs(n_epochs: int) -> set[int]:
     return epochs
 
 
+def list_checkpoints(run_dir: str | Path) -> list[tuple[int, Path]]:
+    """Enumerate a run's saved checkpoints as ``(epoch, path)``, sorted by epoch.
+
+    Looks for ``<run_dir>/ckpt/epoch_*.pt``. This is the checkpoint series the
+    longitudinal feature-emergence analysis (Step 7) consumes.
+    """
+    ckpt_dir = Path(run_dir) / "ckpt"
+    out: list[tuple[int, Path]] = []
+    for p in ckpt_dir.glob("epoch_*.pt"):
+        try:
+            epoch = int(p.stem.split("_")[1])
+        except (IndexError, ValueError):
+            continue
+        out.append((epoch, p))
+    return sorted(out, key=lambda t: t[0])
+
+
 def _to_plain(obj: Any) -> Any:
     """Make configs and metrics JSON-serializable."""
     if is_dataclass(obj) and not isinstance(obj, type):
