@@ -6,9 +6,9 @@ Load a trained VAE checkpoint, encode the MNIST test set to its latent means, an
 
 Usage (on the PC, RTX 4090):
 
-    uv run python experiments/phase1_vae/visualize.py                 # defaults to the Step 1 run
-    uv run python experiments/phase1_vae/visualize.py --epoch 8       # a mid-training checkpoint
-    uv run python experiments/phase1_vae/visualize.py --ckpt path/to/epoch_0030.pt
+    uv run python experiments/epic1/phase1_vae/visualize.py                 # defaults to the Step 1 run
+    uv run python experiments/epic1/phase1_vae/visualize.py --epoch 8       # a mid-training checkpoint
+    uv run python experiments/epic1/phase1_vae/visualize.py --ckpt path/to/epoch_0030.pt
 """
 
 from __future__ import annotations
@@ -56,7 +56,7 @@ def main() -> None:
 
     if not ckpt_path.exists():
         raise FileNotFoundError(
-            f"No checkpoint at {ckpt_path}. Train first (experiments/phase1_vae/train.py) "
+            f"No checkpoint at {ckpt_path}. Train first (experiments/epic1/phase1_vae/train.py) "
             "or point --ckpt at an existing file."
         )
 

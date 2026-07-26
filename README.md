@@ -2,7 +2,7 @@
 
 A personal exploration of frontier AI — **Representation Learning** and **Mechanistic Interpretability**. The goal is to learn deeply and start contributing to research, not to build products.
 
-See [`docs/plan_12-07-2026.md`](epic1_plan_12-07-2026.md) for the full phased plan.
+See [`docs/epic1_plan_12-07-2026.md`](docs/epic1_plan_12-07-2026.md) for the full phased plan.
 
 ## Hardware & Dev Setup
 
@@ -29,6 +29,10 @@ Implications for any agent working in this repo:
 - Write code that is **runnable on the remote PC/WSL GPU**, but don't assume you can execute it here.
 - CPU-only smoke tests, unit tests, linting, data prep, and visualization scaffolding **can** be validated on the Mac.
 - Anything requiring CUDA / the 4090 must be **handed off to run manually** on the PC. Flag these steps clearly rather than attempting them locally.
+
+### Markdown conventions (for AI agents)
+
+- **Do not hard-wrap prose** in Markdown files (`README.md`, `docs/*.md`, `RESULTS.md`, experiment `README.md`s). Write each paragraph as a single line and let the editor soft-wrap. Tables, code fences, and list items follow normal Markdown.
 
 ## Environment (uv + conda, "Option B")
 
@@ -64,10 +68,11 @@ docs/                     Planning docs (the exploration plan)
 src/synapses/             Shared library (device helpers, models, viz — grows over time)
 scripts/                  Runnable utilities (check_setup.py)
 experiments/
-  phase1_vae/             Phase 1 — VAE / representation learning
-  phase2_simclr/          Phase 2 — self-supervised learning
-  phase3_sae/             Phase 3 — sparse autoencoders
-  phase4_mech_interp/     Phase 4 — mechanistic interpretability
+  epic1/                  Epic 1 — "From Representation to Features"
+    phase1_vae/           Phase 1 — VAE / representation learning
+    phase2_simclr/        Phase 2 — self-supervised learning
+    phase3_sae/           Phase 3 — sparse autoencoders
+    phase4_mech_interp/   Phase 4 — mechanistic interpretability
 notebooks/                Exploration notebooks
 data/                     Datasets (gitignored)
 outputs/                  Generated artifacts: images, checkpoints, plots (gitignored)

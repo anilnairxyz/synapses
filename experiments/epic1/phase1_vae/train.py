@@ -1,12 +1,12 @@
 """Phase 1 · Step 1 — baseline MLP VAE on MNIST.
 
 Trains, evaluates, logs one JSON line per epoch, and writes log-spaced checkpoints.
-See ``docs/phase1_plan_23-07-2026.md`` for what this step is for.
+See ``docs/epic1_phase1_plan_23-07-2026.md`` for what this step is for.
 
 Usage (on the PC, RTX 4090):
 
-    uv run python experiments/phase1_vae/train.py --smoke
-    uv run python experiments/phase1_vae/train.py --epochs 30
+    uv run python experiments/epic1/phase1_vae/train.py --smoke
+    uv run python experiments/epic1/phase1_vae/train.py --epochs 30
 
 MNIST must already be on disk; this script will not download it.
 """

@@ -7,8 +7,8 @@ emergence study, which uses the same checkpoint series. See
 docs/epic1_phase1_plan_23-07-2026.md (Step 7).
 
 Usage:
-    uv run python experiments/phase1_vae/analyze_emergence.py
-    uv run python experiments/phase1_vae/analyze_emergence.py --run-id phase1_L32_beta1_s0
+    uv run python experiments/epic1/phase1_vae/analyze_emergence.py
+    uv run python experiments/epic1/phase1_vae/analyze_emergence.py --run-id phase1_L32_beta1_s0
 """
 
 from __future__ import annotations
@@ -49,7 +49,7 @@ def main() -> None:
     if not checkpoints:
         raise FileNotFoundError(
             f"No checkpoints under {run_dir / 'ckpt'}. Train first: "
-            f"experiments/phase1_vae/train.py (produces the log-spaced series)."
+            f"experiments/epic1/phase1_vae/train.py (produces the log-spaced series)."
         )
     print(f"device     : {device}")
     print(f"run        : {args.run_id}  ({len(checkpoints)} checkpoints)")

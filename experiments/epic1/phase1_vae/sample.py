@@ -6,8 +6,8 @@ and chart the digit histogram — the generation imbalance. See
 docs/epic1_phase1_plan_23-07-2026.md (Step 4).
 
 Usage (needs a trained VAE and a trained classifier):
-    uv run python experiments/phase1_vae/train_classifier.py
-    uv run python experiments/phase1_vae/sample.py
+    uv run python experiments/epic1/phase1_vae/train_classifier.py
+    uv run python experiments/epic1/phase1_vae/sample.py
 """
 
 from __future__ import annotations

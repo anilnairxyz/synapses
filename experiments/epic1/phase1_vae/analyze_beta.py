@@ -6,12 +6,12 @@ reconstructions (sharp at low β, blurry at high β). See
 docs/epic1_phase1_plan_23-07-2026.md (Step 6).
 
 Train the models first (L=32, β=1 already done in Step 5):
-    uv run python experiments/phase1_vae/train.py --latent-dim 32 --beta 0
-    uv run python experiments/phase1_vae/train.py --latent-dim 32 --beta 0.1
-    uv run python experiments/phase1_vae/train.py --latent-dim 32 --beta 5
-    uv run python experiments/phase1_vae/train.py --latent-dim 32 --beta 20
+    uv run python experiments/epic1/phase1_vae/train.py --latent-dim 32 --beta 0
+    uv run python experiments/epic1/phase1_vae/train.py --latent-dim 32 --beta 0.1
+    uv run python experiments/epic1/phase1_vae/train.py --latent-dim 32 --beta 5
+    uv run python experiments/epic1/phase1_vae/train.py --latent-dim 32 --beta 20
 Then:
-    uv run python experiments/phase1_vae/analyze_beta.py
+    uv run python experiments/epic1/phase1_vae/analyze_beta.py
 """
 
 from __future__ import annotations
@@ -64,7 +64,7 @@ def main() -> None:
         if not ckpt.exists():
             raise FileNotFoundError(
                 f"Missing checkpoint for β={beta:g}: {ckpt}\n"
-                f"Train it: uv run python experiments/phase1_vae/train.py "
+                f"Train it: uv run python experiments/epic1/phase1_vae/train.py "
                 f"--latent-dim {args.latent_dim} --beta {beta:g}"
             )
         model, _ = load_vae(str(ckpt), device=device)

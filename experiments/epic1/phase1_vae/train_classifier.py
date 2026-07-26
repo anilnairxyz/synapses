@@ -5,8 +5,8 @@ sees plain [0,1] images (ToTensor, not binarized) to match the VAE decoder's pro
 outputs. Saves the best-by-test-accuracy checkpoint to outputs/mnist_cnn/ckpt/best.pt.
 
 Usage:
-    uv run python experiments/phase1_vae/train_classifier.py
-    uv run python experiments/phase1_vae/train_classifier.py --epochs 8
+    uv run python experiments/epic1/phase1_vae/train_classifier.py
+    uv run python experiments/epic1/phase1_vae/train_classifier.py --epochs 8
 """
 
 from __future__ import annotations

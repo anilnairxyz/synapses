@@ -6,11 +6,11 @@ raw-pixel probe baseline. Produces the sweep summary and the KL-spectrum small m
 See docs/epic1_phase1_plan_23-07-2026.md (Step 5).
 
 Train the models first (L=2 already done):
-    uv run python experiments/phase1_vae/train.py --latent-dim 8
-    uv run python experiments/phase1_vae/train.py --latent-dim 32
-    uv run python experiments/phase1_vae/train.py --latent-dim 128
+    uv run python experiments/epic1/phase1_vae/train.py --latent-dim 8
+    uv run python experiments/epic1/phase1_vae/train.py --latent-dim 32
+    uv run python experiments/epic1/phase1_vae/train.py --latent-dim 128
 Then:
-    uv run python experiments/phase1_vae/analyze_sweep.py
+    uv run python experiments/epic1/phase1_vae/analyze_sweep.py
 """
 
 from __future__ import annotations
@@ -68,7 +68,7 @@ def main() -> None:
         if not ckpt.exists():
             raise FileNotFoundError(
                 f"Missing checkpoint for L={L}: {ckpt}\n"
-                f"Train it: uv run python experiments/phase1_vae/train.py --latent-dim {L}"
+                f"Train it: uv run python experiments/epic1/phase1_vae/train.py --latent-dim {L}"
             )
         model, _ = load_vae(str(ckpt), device=device)
         m = evaluate_vae(model, test_loader, device)

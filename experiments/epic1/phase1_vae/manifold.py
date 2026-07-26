@@ -6,9 +6,9 @@ neighbors — the "manifold." See ``docs/epic1_phase1_plan_23-07-2026.md`` (Step
 
 Usage:
 
-    uv run python experiments/phase1_vae/manifold.py            # defaults to the Step 1 run
-    uv run python experiments/phase1_vae/manifold.py --n 30     # finer grid
-    uv run python experiments/phase1_vae/manifold.py --ckpt path/to/epoch_0030.pt
+    uv run python experiments/epic1/phase1_vae/manifold.py            # defaults to the Step 1 run
+    uv run python experiments/epic1/phase1_vae/manifold.py --n 30     # finer grid
+    uv run python experiments/epic1/phase1_vae/manifold.py --ckpt path/to/epoch_0030.pt
 """
 
 from __future__ import annotations
@@ -53,7 +53,7 @@ def main() -> None:
 
     if not ckpt_path.exists():
         raise FileNotFoundError(
-            f"No checkpoint at {ckpt_path}. Train first (experiments/phase1_vae/train.py) "
+            f"No checkpoint at {ckpt_path}. Train first (experiments/epic1/phase1_vae/train.py) "
             "or point --ckpt at an existing file."
         )
 
