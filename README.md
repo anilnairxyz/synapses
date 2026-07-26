@@ -8,11 +8,11 @@ See [`docs/epic1_plan_12-07-2026.md`](docs/epic1_plan_12-07-2026.md) for the ful
 
 I work across two machines, with a third compute tier available for larger evals:
 
-| Tier | Role | Details |
-|------|------|---------|
-| **Mac (M3 Pro)** — *this machine* | Primary dev environment | Where I write and code. Runs Claude / Codex. My preferred machine for typing and editing. |
-| **PC (Windows)** | GPU compute | AMD Ryzen 9 7950X, NVIDIA RTX 4090. Runs **WSL Ubuntu** for training. |
-| **Azure AI Foundry** | Hosted model evals (overflow) | Foundry-hosted models I can evaluate against when the 4090 is a bottleneck (large models, throughput). Accessible via my work at Stockport Labs. |
+| Tier                              | Role                          | Details                                                                                                                                          |
+| --------------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Mac (M3 Pro)** — *this machine* | Primary dev environment       | Where I write and code. Runs Claude / Codex. My preferred machine for typing and editing.                                                        |
+| **PC (Windows)**                  | GPU compute                   | AMD Ryzen 9 7950X, NVIDIA RTX 4090. Runs **WSL Ubuntu** for training.                                                                            |
+| **Azure AI Foundry**              | Hosted model evals (overflow) | Foundry-hosted models I can evaluate against when the 4090 is a bottleneck (large models, throughput). Accessible via my work at Stockport Labs. |
 
 ### How it fits together
 

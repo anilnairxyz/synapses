@@ -35,7 +35,7 @@ Raw-pixel probe baseline: 90.9%. ELBO plateaus at L=32 (L=128 ≈ L=32). **Activ
 
 Convex rate–distortion frontier; β selects the operating point. β=1 is ELBO-optimal (it is the only model minimizing D+R). **β=0 uses 634 nats ≈ 914 bits to represent a 784-bit image — expansion, not compression** (no KL brake → σ→0 → precise, prior-mismatched per-instance codes). β≥5 shows **posterior collapse** (active 31 → 11 → 2), the same failure mode as dead SAE features in Phase 3.
 
-**Step 7 — feature emergence (L=2 checkpoints).** Latent scatter across epochs {1,2,4,8,16,30}: 1 & 7 resolve at epoch 1 and stay put (the most visually distinctive digits, learned first); 4 & 9 appear separated early then re-entangle as the model reorganizes globally under the 2D constraint (a *transient* early feature — emergence is non-monotonic); the crowded middle (0/2/3/5/6/8) starts entangled and resolves slowly and only partially. Active units / rate / probe accuracy vs epoch: _[fill from `emergence_curves.png`]_.
+**Step 7 — feature emergence (L=2 checkpoints).** Latent scatter across epochs {1,2,4,8,16,30}: 1 & 7 resolve at epoch 1 and stay put (the most visually distinctive digits, learned first); 4 & 9 appear separated early then re-entangle as the model reorganizes globally under the 2D constraint (a *transient* early feature — emergence is non-monotonic); the crowded middle (0/2/3/5/6/8) starts entangled and resolves slowly and only partially. 
 
 ## Answers to the phase's four questions
 
@@ -43,8 +43,6 @@ Convex rate–distortion frontier; β selects the operating point. β=1 is ELBO-
 2. **Why doesn't L=128 beat L=32?** Active units saturate at ~30 — the model uses only the intrinsic dimensionality MNIST needs and discards extra capacity (zero-KL tail). Reconstruction and ELBO plateau accordingly.
 3. **What does β control, in R–D terms?** The price of rate. It slides the model along the convex rate–distortion frontier: low β → high-rate/low-distortion, high β → low-rate/high-distortion (and eventually collapse).
 4. **What was discarded, and was that right?** Per-instance pixel detail beyond the ~30-dim shared structure. At β=1 this is the right call — a compressed, generalizable, prior-matching code. β=0 keeping everything (expansion) and β=20 discarding almost everything (collapse) are the two failure modes it sits between.
-
-**In my own words:** _[your synthesis here]_
 
 ## For Phase 3
 
