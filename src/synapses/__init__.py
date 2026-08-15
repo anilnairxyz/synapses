@@ -1,12 +1,22 @@
 """synapses — representation learning & mechanistic interpretability explorations."""
 
 from synapses.classifier import SmallCNN, classify, load_classifier
-from synapses.data import binarize, fixed_binarized_loader, mnist_loaders
+from synapses.data import (
+    CIFAR10_CLASSES,
+    binarize,
+    cifar10_eval_loaders,
+    cifar10_ssl_loader,
+    fixed_binarized_loader,
+    mnist_loaders,
+)
 from synapses.device import device_report, get_device
 from synapses.extract import class_means, encode_latents, encode_moments
 from synapses.losses import VAELoss, vae_loss
 from synapses.metrics import active_units, evaluate_vae, kl_per_dim, linear_probe
-from synapses.run import RunLogger, list_checkpoints, set_seed
+from synapses.run import RunLogger, cosine_warmup_lr, list_checkpoints, set_seed
+from synapses.ssl_augment import TwoViewTransform, eval_transform, ssl_transform
+from synapses.ssl_backbone import CifarResNet18
+from synapses.ssl_eval import embed_dataset, evaluate_representation, knn_accuracy, project_2d
 from synapses.vae import MLPVAE, load_vae
 from synapses.viz import (
     bar_by_class,
@@ -30,6 +40,7 @@ __all__ = [
     "binarize",
     "set_seed",
     "RunLogger",
+    "cosine_warmup_lr",
     "list_checkpoints",
     "encode_latents",
     "encode_moments",
@@ -50,4 +61,15 @@ __all__ = [
     "SmallCNN",
     "load_classifier",
     "classify",
+    "CIFAR10_CLASSES",
+    "cifar10_ssl_loader",
+    "cifar10_eval_loaders",
+    "CifarResNet18",
+    "ssl_transform",
+    "eval_transform",
+    "TwoViewTransform",
+    "embed_dataset",
+    "knn_accuracy",
+    "evaluate_representation",
+    "project_2d",
 ]

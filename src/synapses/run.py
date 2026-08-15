@@ -15,6 +15,7 @@ reproducible from any point. ``outputs/`` is gitignored — these stay on the PC
 from __future__ import annotations
 
 import json
+import math
 import random
 from dataclasses import asdict, is_dataclass
 from pathlib import Path
@@ -58,6 +59,27 @@ def log_spaced_epochs(n_epochs: int) -> set[int]:
         e *= 2
     epochs.add(n_epochs)
     return epochs
+
+
+def cosine_warmup_lr(
+    optimizer: torch.optim.Optimizer, warmup_steps: int, total_steps: int
+) -> torch.optim.lr_scheduler.LambdaLR:
+    """Linear warmup then cosine decay to zero, in optimizer-step (not epoch) units.
+
+    Every Phase 2 SSL method (SimCLR, SimSiam, VICReg, I-JEPA) uses this schedule, so it
+    lives here once rather than being copy-pasted per method. ``warmup_steps``/
+    ``total_steps`` are counted in batches, not epochs -- pass ``epochs * steps_per_epoch``
+    at the call site so the schedule composes correctly regardless of batch size.
+    """
+
+    def lr_lambda(step: int) -> float:
+        if step < warmup_steps:
+            return step / max(1, warmup_steps)
+        progress = (step - warmup_steps) / max(1, total_steps - warmup_steps)
+        progress = min(1.0, progress)
+        return 0.5 * (1.0 + math.cos(math.pi * progress))
+
+    return torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
 
 
 def list_checkpoints(run_dir: str | Path) -> list[tuple[int, Path]]:

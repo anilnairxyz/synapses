@@ -70,7 +70,7 @@ scripts/                  Runnable utilities (check_setup.py)
 experiments/
   epic1/                  Epic 1 — "From Representation to Features"
     phase1_vae/           Phase 1 — VAE / representation learning
-    phase2_simclr/        Phase 2 — self-supervised learning
+    phase2_ssl/           Phase 2 — self-supervised learning
     phase3_sae/           Phase 3 — sparse autoencoders
     phase4_mech_interp/   Phase 4 — mechanistic interpretability
 notebooks/                Exploration notebooks

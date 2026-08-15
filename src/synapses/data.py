@@ -1,4 +1,4 @@
-"""MNIST data pipeline for Phase 1.
+"""MNIST data pipeline for Phase 1, and CIFAR-10 for Phase 2's SSL substrate.
 
 Binarization is asymmetric on purpose:
 
@@ -20,13 +20,27 @@ from __future__ import annotations
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 from torchvision import transforms
-from torchvision.datasets import MNIST
+from torchvision.datasets import CIFAR10, MNIST
+
+from synapses.ssl_augment import TwoViewTransform, eval_transform, ssl_transform
 
 DOWNLOAD_HINT = (
     "MNIST not found under {root!r}. Fetch it once with:\n\n"
     "    uv run python -c \"from torchvision.datasets import MNIST; \"\\\n"
     "        \"MNIST('{root}', train=True, download=True); \"\\\n"
     "        \"MNIST('{root}', train=False, download=True)\"\n"
+)
+
+CIFAR_DOWNLOAD_HINT = (
+    "CIFAR-10 not found under {root!r}. Fetch it once with:\n\n"
+    "    uv run python -c \"from torchvision.datasets import CIFAR10; \"\\\n"
+    "        \"CIFAR10('{root}', train=True, download=True); \"\\\n"
+    "        \"CIFAR10('{root}', train=False, download=True)\"\n"
+)
+
+CIFAR10_CLASSES = (
+    "airplane", "automobile", "bird", "cat", "deer",
+    "dog", "frog", "horse", "ship", "truck",
 )
 
 
@@ -120,3 +134,64 @@ def fixed_binarized_loader(
         num_workers=num_workers,  # already in memory
         pin_memory=pin_memory,
     )
+
+
+def _load_cifar_split(root: str, train: bool, download: bool, transform=None) -> CIFAR10:
+    try:
+        return CIFAR10(root, train=train, download=download, transform=transform)
+    except RuntimeError as exc:  # torchvision raises this when the raw files are absent
+        raise RuntimeError(CIFAR_DOWNLOAD_HINT.format(root=root)) from exc
+
+
+def cifar10_ssl_loader(
+    root: str = "data",
+    transform: TwoViewTransform | None = None,
+    batch_size: int = 256,
+    num_workers: int = 4,
+    download: bool = False,
+    seed: int = 0,
+    pin_memory: bool | None = None,
+) -> DataLoader:
+    """Two-view CIFAR-10 training loader for self-supervised pretraining.
+
+    Yields ``((view1, view2), label)``. The label is carried through but unused by any
+    SSL loss in this phase -- useful later for per-class augmentation checks.
+
+    ``drop_last=True``: every SSL loss here (NT-Xent's negative count, VICReg's
+    variance/covariance) is a batch statistic, so a ragged final batch would distort it.
+    """
+    if transform is None:
+        transform = TwoViewTransform(ssl_transform("strong"))
+    if pin_memory is None:
+        pin_memory = torch.cuda.is_available()
+
+    dataset = _load_cifar_split(root, train=True, download=download, transform=transform)
+    return DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers,
+        pin_memory=pin_memory,
+        drop_last=True,
+        generator=torch.Generator().manual_seed(seed),
+    )
+
+
+def cifar10_eval_loaders(
+    root: str = "data",
+    batch_size: int = 256,
+    num_workers: int = 2,
+    download: bool = False,
+    pin_memory: bool | None = None,
+) -> tuple[DataLoader, DataLoader]:
+    """``(train_loader, test_loader)`` for probe/kNN evaluation: no augmentation, no shuffle."""
+    if pin_memory is None:
+        pin_memory = torch.cuda.is_available()
+
+    tfm = eval_transform()
+    train_set = _load_cifar_split(root, train=True, download=download, transform=tfm)
+    test_set = _load_cifar_split(root, train=False, download=download, transform=tfm)
+    common = dict(
+        batch_size=batch_size, shuffle=False, num_workers=num_workers, pin_memory=pin_memory
+    )
+    return DataLoader(train_set, **common), DataLoader(test_set, **common)

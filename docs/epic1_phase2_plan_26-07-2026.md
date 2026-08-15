@@ -1,142 +1,161 @@
 # Phase 2 — Self-Supervised Learning (Detailed Plan)
 
-Detail for **Phase 2** of [`epic1_plan_12-07-2026.md`](epic1_plan_12-07-2026.md). Same structure as the [Phase 1 detailed plan](epic1_phase1_plan_23-07-2026.md): the numbered **Steps** are the units of work. The first two steps are deliberately *study* — Phase 1 leaned on your separate fundamentals refresh, but the SSL landscape is the thing to understand *before* writing a contrastive loss, so the reading is folded in here as Steps 1–2.
+*Revised 2026-08-14: builds one method per SSL family (SimCLR, SimSiam, VICReg, I-JEPA) on a shared backbone rather than SimCLR alone — the anti-collapse mechanisms only become obvious when you implement and break each one.*
 
-**Phase question:** what can a model learn about images from *no labels at all* — only the constraint that two augmented views of the same image should map to nearby representations? Which invariances does that instill, how good is the resulting representation, and how is the trivial solution (map everything to one point — *collapse*) avoided?
+Detail for **Phase 2** of [`epic1_plan_12-07-2026.md`](epic1_plan_12-07-2026.md). Same structure as the [Phase 1 detailed plan](epic1_phase1_plan_23-07-2026.md): the numbered **Steps** are the units of work.
 
-This is the discriminative mirror of Phase 1. Phase 1 asked what a *generative* objective (reconstruct the input) learns; Phase 2 asks what an *invariance* objective (be robust to augmentation) learns. The **linear probe** is the shared yardstick — the exact protocol from Phase 1 Step 5 (`synapses.metrics.linear_probe`) — so a VAE latent and a SimCLR embedding land on one comparable axis. Keep that comparison in view throughout.
+**Phase question:** what can a model learn about images from *no labels at all* — only the constraint that two views of an image should agree? And, the revised emphasis: **how do the different anti-collapse mechanisms actually differ** when everything else (backbone, data, augmentation, evaluation) is held fixed? SimCLR alone answers the first question but not the second; you only *feel* the difference between preventing collapse with negatives, with optimisation asymmetry, with explicit latent statistics, and with latent-space prediction by building — and breaking — one of each.
 
-## Compute — GPU-first, unlike Phase 1
+This is the discriminative mirror of Phase 1. Phase 1 asked what a *generative* objective (reconstruct) learns; Phase 2 asks what an *invariance* objective learns. The **linear probe** is the shared yardstick — the exact protocol from Phase 1 Step 5 (`synapses.metrics.linear_probe`) — so a VAE latent and each SSL embedding land on one comparable axis.
 
-Phase 1 ran on the Mac. **Phase 2 does not.** Contrastive learning wants a real backbone (ResNet-18), large batches (256–512, for negatives), and many epochs (~200+), so training is a genuine **4090 handoff** — a few hours on the PC. What the Mac (and the agent) *can* validate: the augmentation pipeline, the NT-Xent loss (unit tests + a tiny `--smoke` run), and — importantly — **all post-hoc analysis on saved embeddings** (linear probe, t-SNE/UMAP, alignment/uniformity). Pattern: **train on the PC, analyze anywhere.** No new dependencies — `torchvision` (ResNet, CIFAR-10) is a base dep; `umap-learn`/`seaborn` are in the already-provisioned `viz` extra.
+## Which methods, and why all four
+
+The study is already done and written up — two blog posts in the `lifeandtimes` repo cover the landscape ("Self-Supervised Learning: from SimCLR to SimSiam" and "Barlow Twins and VICReg: Regularising the Latent Space"). The build set takes **one method per family**, so every distinct anti-collapse mechanism gets implemented and, crucially, *broken*:
+
+- **SimCLR** — *contrastive*. Collapse avoided by negatives (other images in the batch pushed apart). Its distinguishing cost is the appetite for large batches.
+- **SimSiam** — *non-contrastive / optimisation-asymmetry*. Predictor + stop-gradient, no negatives, no EMA, no queue. The simplest member, and the one whose collapse is most dramatic to demonstrate.
+- **VICReg** — *regularisation*. Explicit variance/covariance terms on the embeddings. Connects directly to Phase 1's per-dimension analysis.
+- **I-JEPA** — *predictive / latent*. Predict representations of masked regions in latent space. The heaviest (needs a ViT) and the natural bridge to Phase 4.
+
+The payoff is the **comparison**: same backbone, same CIFAR-10, same probe → four representations whose only difference is the mechanism, measured side by side. The three view-based CNN methods (SimCLR/SimSiam/VICReg) are directly comparable; I-JEPA (different architecture, no augmentation views) is compared on the shared probe axis.
+
+## Compute — GPU-first, and now four methods
+
+Phase 1 ran on the Mac. **Phase 2 does not.** A real backbone (ResNet-18), batches of 256–512, and ~200 epochs make each run a genuine **4090 handoff** — a few hours apiece. With four methods plus two break-it ablations that is ~6 training runs, so the epoch budget matters: **~200 epochs per method** is the default here. That is enough to see every phenomenon (clusters form, the probe rises, the ablations collapse); it is deliberately *not* a leaderboard chase (near-SOTA CIFAR probes want ~800 epochs, most of a day each). Take a single best method to 800 later if you want the headline number.
+
+What the Mac (and the agent) *can* validate: the augmentation pipeline, every loss (unit tests + a tiny `--smoke` run), and **all post-hoc analysis on saved embeddings** (linear probe, k-NN, t-SNE/UMAP, collapse diagnostics). Pattern: **train on the PC, analyze anywhere.** No new dependencies for the CNN methods — `torchvision` (ResNet, CIFAR-10) is a base dep, `umap-learn`/`seaborn` are in the provisioned `viz` extra. I-JEPA needs a small ViT (hand-rolled or `torchvision`).
 
 ## Reuse from Phase 1
 
-- `synapses.metrics.linear_probe` — the frozen-features probe, unchanged. The headline SSL metric and the cross-phase comparison axis.
-- `synapses.run` — `set_seed`, `RunLogger`, `save_checkpoint`/`load_checkpoint`, `log_spaced_epochs`, `list_checkpoints`. The experiment plumbing is phase-agnostic; reuse wholesale.
-- `synapses.viz` — `latent_scatter` (to plot 2-D t-SNE/UMAP embeddings colored by label), `line_plot`, `image_grid` (to show augmentation pairs).
+- `synapses.metrics.linear_probe` — the frozen-features probe, unchanged. Headline metric + cross-phase axis.
+- `synapses.metrics.active_units` — the per-dimension variance idea, reused as a collapse diagnostic on SSL embeddings.
+- `synapses.run` — `set_seed`, `RunLogger`, `save/load_checkpoint`, `log_spaced_epochs`, `list_checkpoints`. Phase-agnostic plumbing, reuse wholesale.
+- `synapses.viz` — `latent_scatter` (for 2-D t-SNE/UMAP scatters), `line_plot`, `image_grid` (augmentation pairs, collapse curves).
 - `synapses.device.get_device`, and the `RESULTS.md` close-out pattern.
 
-New code (SimCLR model, NT-Xent loss, augmentation pipeline, CIFAR data) is the natural moment to introduce **domain grouping in `src/`** — e.g. `src/synapses/models/` for `vae.py` + the new `simclr.py`, per the layout discussion. Decide at build time; the plan assumes reusable pieces still land in `src/synapses/`, phase-agnostic.
+New reusable code lands in `src/synapses/`, and this is the moment to introduce **domain grouping**: `src/synapses/models/` for `vae.py` + the new backbones, and `src/synapses/ssl/` (heads + losses per method). Group by *kind*, never by phase.
 
 ---
 
-## Step 1 — Study: the SSL landscape and the collapse problem
+## Step 1 — Study recap + I-JEPA
 
-No code. The goal is one organizing idea: **every SSL method is a different answer to "how do I avoid representation collapse?"** (the degenerate solution where the encoder maps every input to the same vector, trivially satisfying "views of the same image are close"). Read with that lens and the zoo becomes a taxonomy.
+Study is largely complete (the two blog posts are the deliverable). This step only fills gaps:
 
-The four families, by anti-collapse mechanism:
+- **Re-read your SimCLR/SimSiam and VICReg notes** with an eye to implementation detail: SimCLR's NT-Xent and temperature; SimSiam's predictor/stop-gradient asymmetry and symmetrised cosine loss; VICReg's three terms, standard weights (λ=25, μ=25, ν=1), and the variance hinge target (γ=1).
+- **New reading — I-JEPA** (Assran et al. 2023) and the JEPA framing (LeCun): context encoder, EMA target encoder, a predictor that reconstructs *target-block representations* (not pixels) from context + positional tokens, with masking replacing augmentation.
+- **Diagnostics — Wang & Isola (2020)**, alignment & uniformity, the quantitative collapse metrics used in Step 6.
 
-- **Contrastive — push negatives apart.** SimCLR (Chen et al. 2020) and MoCo (He et al. 2020). Positives = two augmentations of one image; negatives = other images. Collapse is impossible because negatives are forced apart. Cost: needs many negatives (SimCLR → huge batches; MoCo → a momentum queue to decouple negatives from batch size).
-- **Non-contrastive — architectural asymmetry.** BYOL (Grill et al. 2020) and SimSiam (Chen & He 2021). *No negatives.* Collapse is avoided by a predictor head on one branch + stop-gradient (BYOL adds an EMA target network). SimSiam is the one to study hardest: it strips away everything and shows **stop-gradient alone** prevents collapse — a genuinely surprising, clarifying result.
-- **Regularization — explicit anti-collapse terms.** VICReg (Bardes et al. 2022) and Barlow Twins (Zbontar et al. 2021). VICReg's three terms — **V**ariance (hinge each dim's std above a floor), **I**nvariance (MSE between views), **C**ovariance (decorrelate dims) — attack collapse directly and are the most interpretable, connecting straight back to Phase 1's per-dimension variance / active-units analysis.
-- **Clustering / distillation / predictive.** SwAV (Caron et al. 2020, online clustering), DINO (Caron et al. 2021, self-distillation with centering+sharpening; produces ViT attention maps that segment objects), and I-JEPA (Assran et al. 2023, predict *representations* of masked regions in latent space — LeCun's joint-embedding predictive framework, the bridge toward Phase 3/4 thinking).
-
-Plus one analysis paper to read carefully: **Wang & Isola (2020), "Alignment and Uniformity"** — good representations are *aligned* (positives close) and *uniform* (features spread evenly on the unit hypersphere). This gives two quantitative, collapse-sensitive metrics used in Step 6.
-
-**Deliverable:** short notes answering, for each method, "what is its anti-collapse mechanism, and what does it cost?" — and one sentence connecting collapse here to *posterior collapse* in Phase 1 (both are the model refusing to use its representational capacity).
+**Deliverable:** short notes on I-JEPA's mechanism and where it sits relative to the view-based families (it doesn't avoid collapse with a "trick" — masking + latent targets sidestep the trivial solution differently).
 
 ---
 
-## Step 2 — Study→build: the SimCLR objective and the augmentation recipe
+## Step 2 — Build the shared SSL substrate
 
-Still mostly study, but now aimed at what you'll implement. Two things to derive/internalize before coding, exactly as `vae_loss` was understood before Step 1 was written:
+The foundation the view-based methods plug into — build once, reuse for SimCLR, SimSiam, VICReg.
 
-- **NT-Xent (normalized temperature-scaled cross-entropy).** For a batch of N images, make 2N augmented views. For each view, its positive is the other view of the same image; the other 2N−2 are negatives. Loss per pair: `−log[ exp(sim(zᵢ,zⱼ)/τ) / Σ_k exp(sim(zᵢ,zₖ)/τ) ]`, with `sim` = cosine similarity, τ the temperature (~0.5 for CIFAR). Derive it as a 2N-way classification "which of the others is my positive?" — it's InfoNCE, and it is the object of study, so it gets written by hand and unit-tested (like the KL was).
-- **The augmentation recipe *is* the method.** SimCLR's power comes from strong augmentation: random-resized-crop, horizontal flip, color jitter (strong), random grayscale, and Gaussian blur. The composition defines *which invariances the representation is forced to learn* — crop → some translation/scale invariance, color jitter → color invariance, etc. Understand each augmentation as "the invariance I am imposing." This is what Step 5 ablates.
+- **Backbone:** CIFAR-adapted ResNet-18 (3×3 stride-1 stem, no initial maxpool — the ImageNet stem destroys 32×32 images). Its 512-D output is *the representation* kept for evaluation.
+- **Two-view augmentation pipeline:** random-resized-crop, horizontal flip, color jitter, random grayscale, Gaussian blur. Each image yields two independently augmented views.
+- **CIFAR-10 data** (50k train), plus a labelled split for the probe.
+- **Training skeleton:** two-view forward, generic loss hook, cosine LR schedule with warmup, JSONL logging + log-spaced checkpoints (reuse `synapses.run`), a `--smoke` path, and a per-method loss init-sanity check.
+- **Evaluation harness (the shared yardstick):** freeze backbone → encode train/test → `linear_probe` + k-NN accuracy; t-SNE/UMAP scatter via `latent_scatter`.
 
-**Deliverable:** the NT-Xent math worked out by hand, and a written list mapping each augmentation to the invariance it induces (the hypothesis Step 5 tests).
+Each view-based method (Steps 3–5) supplies only a **projector/predictor head + a loss**; the backbone, augmentation, data, loop, and eval are this shared substrate. That is what makes four methods a modest increment rather than four projects.
 
----
-
-## Step 3 — Build: SimCLR on CIFAR-10
-
-The baseline training run. Components:
-
-- **Backbone:** ResNet-18, CIFAR-adapted (replace the 7×7 stride-2 stem with 3×3 stride-1 and drop the initial maxpool — standard for 32×32; the ImageNet stem throws away too much on tiny images). Backbone output (512-D) is the representation kept for evaluation.
-- **Projection head:** small MLP (512 → 512 → 128) with BN+ReLU, trained but **discarded at eval** (SimCLR's key finding: probe the backbone, not the projection). Understand *why* the head helps training but hurts as a final representation.
-- **NT-Xent loss** (from Step 2), temperature τ≈0.5.
-- **Two-view augmentation pipeline** (from Step 2).
-- **Data:** CIFAR-10 (32×32, 50k train; well-documented small-scale SimCLR recipes exist). STL-10 is the alternative (100k unlabeled, 96×96) but heavier — see Open questions.
-- **Optimization:** SGD+momentum or LARS, cosine schedule with linear warmup, batch 256–512, ~200 epochs (more helps; small-scale SimCLR keeps improving to ~800). Fixed seed, config dataclass, JSONL logging + log-spaced checkpoints — reuse `synapses.run`.
-- **Same normalization discipline as Phase 1:** an init sanity check on the loss (at random init NT-Xent ≈ `log(2N−1)`, the uniform-over-negatives value) to catch a broken loss before burning GPU hours.
-
-**Done when:** the NT-Xent curve descends and stabilizes; a smoke run (2 epochs) is clean on the Mac before the full run goes to the PC.
+**Done when:** a `--smoke` run trains end-to-end on the Mac (tiny, CPU/MPS) and the eval harness produces a probe number on a random-init backbone (the floor to beat).
 
 ---
 
-## Step 4 — Evaluate: linear probe + embedding visualization
+## Step 3 — Build SimCLR (contrastive)
 
-The payoff — does a label-free objective produce a representation that *knows the classes*?
+Add a projector (no predictor); loss is NT-Xent over the 2N views in a batch, positives = the two views of an image, negatives = all others:
 
-- **Linear probe (headline).** Freeze the backbone, encode CIFAR-10 train+test to 512-D features, fit `synapses.metrics.linear_probe`. Report test accuracy. Expect ~80–90% at 200+ epochs with ResNet-18 — and put it next to the Phase 1 numbers and a **raw-pixel baseline** (same as Step 5 there). This is the moment the two phases become comparable.
-- **Embedding visualization.** t-SNE and/or UMAP (the `viz` extra) of the 512-D features down to 2-D, colored by label, via `latent_scatter`. Unlike the Phase 1 latent scatter (which came free at L=2), here it's a projection — but the read is the same: do classes form clean clusters *without ever having seen a label*?
-- **k-NN accuracy** (cheap, no training): a non-parametric sanity check on the feature space that complements the linear probe.
+$$
+\ell_{i,j} = -\log \frac{\exp(\text{sim}(z_i, z_j)/\tau)}{\sum_{k \neq i} \exp(\text{sim}(z_i, z_k)/\tau)}, \qquad \text{sim}(u,v) = \frac{u^\top v}{\lVert u\rVert\,\lVert v\rVert}
+$$
 
-**Expect:** clear class clusters; the animal/vehicle superstructure of CIFAR-10 visible; the probe far above raw pixels and competitive with a supervised baseline.
-
----
-
-## Step 5 — Augmentation ablation (the experiment)
-
-The master plan's "strong vs weak augmentation" experiment, made quantitative. Retrain (or fine-tune short runs) under varied augmentation strength and measure the probe:
-
-- **Strong** (full SimCLR recipe) vs **weak** (crop+flip only) vs **minimal** (flip only).
-- Toggle individual augmentations (drop color jitter; drop grayscale; drop blur) to isolate each one's contribution — the direct test of the Step 2 invariance hypotheses.
-
-**What to read off:** which augmentations carry the representation (color jitter is famously load-bearing for SimCLR — removing it collapses probe accuracy, because without it the network cheats by matching color histograms instead of learning shape). When does quality *degrade*? This is the concrete "what is the objective actually doing" answer the master plan asks for.
+Temperature τ≈0.5, batch 256–512 (negatives come from the batch, so this is the method that cares about batch size). Init sanity: at random init NT-Xent ≈ `log(2N−1)`. Train; probe. This is the *sample-side* mechanism — collapse is impossible because equal representations make the positive indistinguishable from negatives.
 
 ---
 
-## Step 6 — Collapse diagnostics (and an optional second method)
+## Step 4 — Build SimSiam (non-contrastive)
 
-Make the Step 1 collapse story measurable, and connect it to Phase 1.
+Add a 3-layer projector and a 2-layer **predictor**; loss is the symmetrised negative cosine with **stop-gradient** on the target branch:
 
-- **Alignment & uniformity** (Wang & Isola): alignment = mean distance between positive pairs (lower = better); uniformity = log-mean-exp of pairwise distances on the hypersphere (more negative = more spread). Track both over training. A collapsing run shows alignment→0 *and* uniformity→0 (everything coincides).
-- **Feature-space rank / per-dimension variance** — the direct analog of Phase 1's active units and per-dimension KL. A healthy SSL representation uses many dimensions; a collapsing one has few effective dimensions (low rank). Reuse the *idea* from `synapses.metrics.active_units`.
-- **Optional second method for contrast:** implement **VICReg** on the same backbone. It's the cheapest non-SimCLR method to add (no negatives, no EMA, no queue — just the V/I/C regularizers) and its variance term is *exactly* the anti-collapse mechanism made explicit, so it pairs beautifully with the diagnostics above and with Phase 1's per-dimension analysis. This is where "how does each method avoid collapse" stops being a reading-notes claim and becomes something you measured. (Decision — see Open questions.)
+$$
+\mathcal{L} = \tfrac{1}{2}\big[D(p_1, \operatorname{sg}(z_2)) + D(p_2, \operatorname{sg}(z_1))\big], \qquad D(p, z) = -\frac{p}{\lVert p\rVert}\cdot\frac{z}{\lVert z\rVert}
+$$
+
+No negatives, no EMA, no queue. Train; probe.
+
+**The signature experiment — break it.** Remove the stop-gradient and retrain: the loss dives to −1 almost immediately and the representation collapses (per-dimension std → 0, probe → chance). This is the most instructive result in non-contrastive SSL — it *shows* the anti-collapse mechanism is the optimisation asymmetry, not the loss. Ablate the predictor too (remove it → collapse) to confirm both pieces are load-bearing.
 
 ---
 
-## Step 7 — Checkpoints for the longitudinal project + close-out
+## Step 5 — Build VICReg (regularisation)
 
-Mirror Phase 1 Step 7. The stretch project ("From Representation to Features": train a repr model → extract activations → train an SAE → analyze features across checkpoints) can use a SimCLR encoder as its representation model, so the checkpoint discipline matters here too.
+Same substrate; swap the head for a wider **expander** and the loss for variance-invariance-covariance, no predictor:
 
-- Log-spaced checkpoints (model + optimizer + epoch + RNG + config) via `synapses.run` — already built.
-- A frozen held-out batch for comparable feature extraction across checkpoints.
-- Record seeds; note the gitignored `outputs/` paths.
-- **`experiments/epic1/phase2_simclr/RESULTS.md`** — the numbers, the augmentation-ablation findings, the SimCLR-vs-VAE probe comparison, and the answer to the phase question in your own words.
+$$
+\mathcal{L} = \lambda\,\mathcal{L}_{\text{inv}} + \mu\,\mathcal{L}_{\text{var}} + \nu\,\mathcal{L}_{\text{cov}}
+$$
+
+invariance = MSE between views; variance = mean hinge `max(0, γ − std(z_j))` per dimension (γ=1); covariance = off-diagonal squared covariance. Standard weights λ=μ=25, ν=1. Train; probe.
+
+**The signature experiment — break it.** Set μ=0 (drop the variance term) and retrain: the representation collapses, directly demonstrating that the variance hinge is *the* anti-collapse mechanism. This is the exact mirror of SimSiam's stop-grad ablation — a different mechanism, broken the same way, same collapse symptom — which is the contrast the whole phase is for.
+
+---
+
+## Step 6 — The comparison (the payoff)
+
+Same backbone, same data, same probe — line up SimCLR, SimSiam, VICReg. This step is why the phase builds more than one.
+
+- **Representation quality:** linear-probe and k-NN accuracy for the three methods, against a raw-pixel baseline and the **Phase 1 VAE probe**. One table, one axis.
+- **Collapse diagnostics, side by side:** alignment & uniformity (Wang-Isola), per-dimension std, and **effective rank** of the representation covariance (the SSL analog of Phase 1's active units — how many dimensions are actually used). The healthy methods should score well; the *broken* variants from Steps 4–5 should light these up differently, exposing how each mechanism fails.
+- **Augmentation sensitivity:** a short strong-vs-weak sweep on one method (color jitter is famously load-bearing) — which invariances the representation depends on.
+- **Embedding scatters:** t-SNE/UMAP of each method's features, coloured by label.
+
+**The question to answer:** do contrastive, non-contrastive, and regularisation reach similar representation quality by different routes — and do their *failure modes* differ even when their successes converge?
+
+---
+
+## Step 7 — Build I-JEPA (predictive)
+
+The predictive/latent family, and the heaviest build — a different architecture from the CNN methods. Small ViT context + EMA target encoders, block masking, a predictor over target-block representations, L2 loss in representation space — no augmentation-invariance, no negatives. CIFAR-10 at 32×32 is *not* I-JEPA's natural habitat (few patches), so treat this as a learning exercise, not a benchmark: a tiny ViT (patch 4 → 64 tokens) is enough to feel the mechanism, and it is the bridge into Phase 4's transformer work. Evaluate on the same frozen linear probe and fold its number into the Step 6 table (alignment/uniformity don't apply — no augmentation views — so compare it on probe/k-NN/effective-rank only).
+
+---
+
+## Step 8 — Checkpoints + close-out
+
+Mirror Phase 1 Step 7. Log-spaced checkpoints (reuse `synapses.run`) for each method so SSL feature emergence is comparable to the VAE's, a frozen held-out batch, recorded seeds, gitignored `outputs/` paths noted. Then **`experiments/epic1/phase2_ssl/RESULTS.md`**: the four-method comparison table, the two break-it ablations, the SSL-vs-VAE probe comparison, and the answer to the phase question in your own words.
 
 ---
 
 ## Deliverables
 
-- `experiments/epic1/phase2_simclr/` — backbone + projection head, NT-Xent, augmentation pipeline, train loop, eval/probe, ablation driver, diagnostics.
-- Study notes (Steps 1–2): the collapse taxonomy + the augmentation→invariance mapping.
-- Linear-probe accuracy vs a raw-pixel baseline and vs the Phase 1 VAE probe.
-- t-SNE/UMAP embedding scatter colored by label.
-- Augmentation-ablation table (probe accuracy across recipes).
-- Alignment/uniformity (and rank) curves over training.
+- `experiments/epic1/phase2_ssl/` — shared substrate (backbone, augmentation, data, loop, eval harness) + SimCLR / SimSiam / VICReg heads and losses + the I-JEPA ViT build.
+- Linear-probe + k-NN table: SimCLR vs SimSiam vs VICReg vs I-JEPA vs raw-pixel vs Phase 1 VAE.
+- The two **break-it** ablations (SimSiam no-stop-grad; VICReg no-variance) with collapse curves.
+- Collapse diagnostics (alignment/uniformity, per-dim std, effective rank) across the view-based methods.
+- t-SNE/UMAP embedding scatters; an augmentation-sensitivity mini-sweep.
 - Checkpoint series + `RESULTS.md`.
 
 ## Success criteria
 
-Not "the code runs". Phase 2 is done when you can answer, from your own results:
+Phase 2 is done when you can answer, from your own results:
 
-1. How good is a label-free representation, on the same linear-probe axis as the Phase 1 VAE? Why is it better (or worse)?
-2. Which augmentations carry the representation, and what invariance does each impose?
-3. What does representation collapse look like *quantitatively* (alignment/uniformity/rank), and how does SimCLR's negative-sampling avoid it — versus VICReg's explicit regularizers?
-4. How does what an SSL objective *chooses to keep* differ from what the VAE kept in Phase 1?
+1. Do contrastive, non-contrastive, and regularisation methods reach comparable representation quality (linear probe) despite entirely different anti-collapse mechanisms?
+2. What does each mechanism's *failure* look like — and why do removing negatives, removing stop-gradient, and removing the variance term all cause collapse?
+3. How does a label-free representation compare to the Phase 1 VAE on the shared probe axis, and how does the predictive (I-JEPA) route differ from the view-based ones?
+4. Which augmentations carry the representation, and what invariance does each impose?
 
-## Exit ramps (out of scope for Phase 2)
+## Exit ramps (out of scope)
 
-- **BYOL / SimSiam / DINO implementations** — study them, but implementing beyond one comparison method (VICReg) is scope creep; DINO in particular wants a ViT and is a project of its own.
-- **STL-10 / ImageNet-scale** — CIFAR-10 is enough to see every phenomenon; larger data is a compute sink, not new insight, for this phase.
-- **Supervised-contrastive / fine-tuning the whole backbone** — a different question (transfer) than "what did SSL learn".
+- **BYOL / DINO / Barlow Twins / MoCo implementations** — study only. BYOL is close to SimSiam+EMA (a small add-on if curious); DINO needs a ViT and is its own project; MoCo is SimCLR + a queue.
+- **STL-10 / ImageNet-scale, LARS, 800-epoch runs** — CIFAR-10 at ~200 epochs shows every phenomenon; take one method longer only if you want a headline probe number.
 
-## Open questions
+## Resolved decisions (from the earlier open questions)
 
-- **Dataset:** CIFAR-10 (recommended — fast, standard small-scale recipes) vs STL-10 (more unlabeled data, closer to the SSL use case, but heavier).
-- **Second method:** implement VICReg as the Step 6 contrast, or keep Phase 2 SimCLR-only and treat other methods as study only?
-- **Epoch budget:** ~200 (sees the phenomena, a few hours) vs ~800 (near-SOTA small-scale probe, most of a day on the 4090).
-- **Optimizer:** SGD+cosine (simple, robust at this scale) vs LARS (SimCLR's choice, matters more at large batch).
+- **Build all four families** — SimCLR, SimSiam, VICReg, I-JEPA (one per mechanism).
+- **I-JEPA is a full build** (Step 7), not a stretch.
+- **~200 epochs per method** as the default budget.
+- **Folder renamed** `phase2_simclr/` → `phase2_ssl/`.
