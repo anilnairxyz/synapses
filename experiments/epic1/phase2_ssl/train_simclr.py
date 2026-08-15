@@ -22,6 +22,7 @@ from dataclasses import dataclass
 
 import torch
 from torch import nn
+from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
 
 from synapses import get_device
@@ -40,6 +41,8 @@ from synapses.ssl_eval import evaluate_representation
 from synapses.ssl_losses import nt_xent_loss
 
 SMOKE_BATCHES = 5
+SMOKE_PROBE_SUBSET = 500  # cap probe/kNN eval data under --smoke -- the full-scale fit
+                          # (50k x 512, sklearn, CPU-bound) defeats the point of a smoke test
 
 
 @dataclass
@@ -94,6 +97,13 @@ def parse_args() -> SimCLRConfig:
     if cfg.smoke:
         cfg.epochs = 2
     return cfg
+
+
+def _capped(loader: DataLoader, n: int) -> DataLoader:
+    """Cap a DataLoader's dataset to at most n examples, keeping its batch size."""
+    ds = loader.dataset
+    idx = list(range(min(n, len(ds))))
+    return DataLoader(Subset(ds, idx), batch_size=loader.batch_size, shuffle=False)
 
 
 def build_projector(in_dim: int, hidden_dim: int, out_dim: int) -> nn.Sequential:
@@ -192,6 +202,12 @@ def main() -> None:
     probe_train_loader, probe_test_loader = cifar10_eval_loaders(
         root=cfg.data_root, batch_size=cfg.batch_size, download=False,
     )
+    if cfg.smoke:
+        # Full-scale probe fit (50k x 512, sklearn lbfgs, CPU-bound) is slow and pointless
+        # for a sanity check -- cap it so --smoke stays fast while still exercising the
+        # real evaluate_representation() code path.
+        probe_train_loader = _capped(probe_train_loader, SMOKE_PROBE_SUBSET)
+        probe_test_loader = _capped(probe_test_loader, SMOKE_PROBE_SUBSET)
     print(f"data       : {len(train_loader.dataset)} train (SSL) / "
           f"{len(probe_test_loader.dataset)} test (probe), aug={cfg.aug_strength}")
 
