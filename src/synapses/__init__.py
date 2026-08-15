@@ -17,6 +17,7 @@ from synapses.run import RunLogger, cosine_warmup_lr, list_checkpoints, set_seed
 from synapses.ssl_augment import TwoViewTransform, eval_transform, ssl_transform
 from synapses.ssl_backbone import CifarResNet18
 from synapses.ssl_eval import embed_dataset, evaluate_representation, knn_accuracy, project_2d
+from synapses.ssl_losses import nt_xent_loss
 from synapses.vae import MLPVAE, load_vae
 from synapses.viz import (
     bar_by_class,
@@ -72,4 +73,5 @@ __all__ = [
     "knn_accuracy",
     "evaluate_representation",
     "project_2d",
+    "nt_xent_loss",
 ]
