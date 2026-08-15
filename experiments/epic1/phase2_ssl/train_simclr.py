@@ -250,16 +250,21 @@ def main() -> None:
                    f"lr {optimizer.param_groups[0]['lr']:.4f}  {seconds:5.1f}s")
 
             if epoch in ckpt_epochs:
-                # Evaluation is not cheap (fitting a probe on 50k x 512 features), so it
-                # only runs at the same log-spaced epochs already being checkpointed.
+                # Evaluation is not cheap (fitting a probe on 50k x 512 features on CPU
+                # via sklearn), so it only runs at the same log-spaced epochs already
+                # being checkpointed. Timed separately so it's clear this -- not a hang
+                # -- is why the gap to the next printed line is longer than `seconds`.
+                t_eval = time.time()
                 metrics = evaluate_representation(
                     model.backbone, probe_train_loader, probe_test_loader, device,
                 )
+                eval_seconds = time.time() - t_eval
                 log_kwargs.update(
-                    linear_probe=metrics["linear_probe"], knn=metrics["knn"]
+                    linear_probe=metrics["linear_probe"], knn=metrics["knn"],
+                    eval_seconds=eval_seconds,
                 )
                 line += (f"  probe {metrics['linear_probe'] * 100:5.1f}%  "
-                        f"knn {metrics['knn'] * 100:5.1f}%")
+                        f"knn {metrics['knn'] * 100:5.1f}%  (eval {eval_seconds:.1f}s)")
                 save_checkpoint(run_dir / "ckpt" / f"epoch_{epoch:04d}.pt",
                                model, optimizer, epoch, cfg)
 
