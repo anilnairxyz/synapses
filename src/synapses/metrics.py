@@ -87,12 +87,16 @@ def linear_probe(
     test_x: torch.Tensor | np.ndarray,
     test_y: torch.Tensor | np.ndarray,
     standardize: bool = True,
-    max_iter: int = 1000,
+    max_iter: int = 3000,
 ) -> float:
     """Fit a logistic-regression probe on ``train_x`` and return test accuracy.
 
     Works on any representation — VAE ``mu`` per latent dim, or raw pixels for the
     baseline. Standardizes features by default so convergence doesn't depend on scale.
+
+    ``max_iter`` defaults higher than sklearn's own default (100): Phase 1's low-
+    dimensional VAE latents converge well under 1000 iterations, but a 512-d ResNet
+    representation (Phase 2) needs more before lbfgs actually settles, not just stops.
     """
     def _np(t):
         return t.detach().cpu().numpy() if isinstance(t, torch.Tensor) else np.asarray(t)

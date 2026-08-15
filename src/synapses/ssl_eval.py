@@ -56,12 +56,13 @@ def evaluate_representation(
     test_loader: torch.utils.data.DataLoader,
     device: torch.device | str,
     k: int = 20,
+    max_iter: int = 3000,
 ) -> dict:
     """Freeze the backbone, embed both splits once, report the two headline metrics."""
     train_x, train_y = embed_dataset(model, train_loader, device)
     test_x, test_y = embed_dataset(model, test_loader, device)
     return {
-        "linear_probe": linear_probe(train_x, train_y, test_x, test_y),
+        "linear_probe": linear_probe(train_x, train_y, test_x, test_y, max_iter=max_iter),
         "knn": knn_accuracy(train_x, train_y, test_x, test_y, k=k),
     }
 
