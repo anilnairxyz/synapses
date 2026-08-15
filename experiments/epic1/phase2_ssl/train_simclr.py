@@ -30,6 +30,7 @@ from synapses.data import cifar10_eval_loaders, cifar10_ssl_loader
 from synapses.run import (
     RunLogger,
     cosine_warmup_lr,
+    load_checkpoint,
     log_spaced_epochs,
     make_run_dir,
     save_checkpoint,
@@ -130,6 +131,22 @@ class SimCLRModel(nn.Module):
         h = self.backbone(x)
         z = self.projector(h)
         return h, z
+
+
+def load_simclr(ckpt_path: str, device: torch.device | str = "cpu") -> tuple[SimCLRModel, dict]:
+    """Rebuild a trained SimCLRModel from a checkpoint written by save_checkpoint.
+
+    Mirrors synapses.vae.load_vae's pattern: read the stored config to reconstruct the
+    architecture, restore weights, move to device, eval mode. Returns (model, config).
+    """
+    ckpt = load_checkpoint(ckpt_path, map_location=device)
+    cfg = ckpt["config"]
+    backbone = CifarResNet18()
+    projector = build_projector(backbone.out_dim, cfg["projector_hidden"], cfg["projector_out"])
+    model = SimCLRModel(backbone, projector)
+    model.load_state_dict(ckpt["model"])
+    model.to(device).eval()
+    return model, cfg
 
 
 def init_sanity_check(model: SimCLRModel, loader, device: torch.device, temperature: float) -> None:

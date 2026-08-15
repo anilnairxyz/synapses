@@ -79,3 +79,12 @@ def test_image_grid_builds():
 def test_bar_by_class_builds():
     ax = bar_by_class([0.9, 0.5, 0.7], ylabel="hit rate", as_percent=True)
     assert len(ax.patches) == 3
+    assert ax.get_xlabel() == "digit"  # unchanged default, backward compatible
+
+
+def test_bar_by_class_custom_labels():
+    names = ["cat", "dog", "deer"]
+    ax = bar_by_class([0.9, 0.5, 0.7], ylabel="acc", xlabel="class", xticklabels=names)
+    assert ax.get_xlabel() == "class"
+    got = [t.get_text() for t in ax.get_xticklabels()]
+    assert got == names

@@ -265,11 +265,14 @@ def bar_by_class(
     ax: plt.Axes | None = None,
     title: str | None = None,
     as_percent: bool = False,
+    xlabel: str = "digit",
+    xticklabels: list[str] | None = None,
 ) -> plt.Axes:
     """Single-series bar over classes 0..N-1 (magnitude by category).
 
     One accent color (not the categorical palette — this encodes magnitude, not
-    identity), values printed above each bar, recessive axes.
+    identity), values printed above each bar, recessive axes. ``xticklabels`` overrides
+    the numeric 0..N-1 ticks (e.g. CIFAR-10 class names) — default is Phase 1's digit chart.
     """
     vals = _to_numpy(values).astype(float)
     n = len(vals)
@@ -283,7 +286,9 @@ def bar_by_class(
         ax.text(xi, v, label, ha="center", va="bottom", fontsize=8, color="0.2")
 
     ax.set_xticks(x)
-    ax.set_xlabel("digit")
+    if xticklabels is not None:
+        ax.set_xticklabels(xticklabels, rotation=45, ha="right")
+    ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
