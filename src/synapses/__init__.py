@@ -17,10 +17,10 @@ from synapses.run import RunLogger, cosine_warmup_lr, list_checkpoints, set_seed
 from synapses.ssl_augment import TwoViewTransform, eval_transform, ssl_transform
 from synapses.ssl_backbone import CifarResNet18
 from synapses.ssl_eval import (
-    active_units_normalized,
     embed_dataset,
     evaluate_representation,
     knn_accuracy,
+    participation_ratio,
     project_2d,
 )
 from synapses.ssl_losses import nt_xent_loss, simsiam_loss
@@ -78,7 +78,7 @@ __all__ = [
     "embed_dataset",
     "knn_accuracy",
     "evaluate_representation",
-    "active_units_normalized",
+    "participation_ratio",
     "project_2d",
     "nt_xent_loss",
     "simsiam_loss",

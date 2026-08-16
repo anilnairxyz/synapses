@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
+import pytest
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
-from synapses.metrics import active_units
 from synapses.ssl_eval import (
-    active_units_normalized,
     embed_dataset,
     evaluate_representation,
     knn_accuracy,
+    participation_ratio,
     project_2d,
 )
 
@@ -51,29 +51,47 @@ def test_evaluate_representation_keys_and_quality():
     test_loader = DataLoader(TensorDataset(x[1::2], y[1::2]), batch_size=16)
 
     out = evaluate_representation(_Identity(), train_loader, test_loader, device="cpu")
-    assert set(out) == {"linear_probe", "knn", "active_units"}
+    assert set(out) == {"linear_probe", "knn", "participation_ratio"}
     assert out["linear_probe"] > 0.9
     assert out["knn"] > 0.9
-    # x has 4 feature dims and both vary across the (well-separated) data -> all active
-    assert out["active_units"] == 4
+    assert out["participation_ratio"] > 0
 
 
-def test_active_units_normalized_survives_magnitude_shrink():
-    """The exact bug this function exists to prevent: two well-separated clusters (a
-    genuinely informative, high-variance-by-direction representation) scaled down to a
-    tiny uniform magnitude -- the kind of drift weight decay causes over hundreds of
-    epochs under a magnitude-invariant (cosine) loss. Raw active_units, which only looks
-    at absolute variance, is fooled into reporting near-total collapse. Normalizing to
-    unit length first is scale-invariant and reports the true, undiminished count."""
+def test_participation_ratio_near_one_for_collapsed_features():
+    """Everything pointing (almost) the same way: one dominant direction, tiny noise
+    elsewhere -- exactly what "every input maps to ~the same vector" looks like. This is
+    the failure mode the whole diagnostic exists to catch."""
     torch.manual_seed(0)
-    a = torch.randn(100, 4) + 5.0
-    b = torch.randn(100, 4) - 5.0
-    x = torch.cat([a, b]) * 1e-4  # direction unchanged, magnitude crushed
+    direction = torch.randn(1, 64)
+    collapsed = torch.randn(500, 1) @ direction + 1e-3 * torch.randn(500, 64)
+    assert participation_ratio(collapsed) < 1.05
 
-    raw = active_units(x, threshold=0.01)
-    fixed = active_units_normalized(x, threshold=0.01)
-    assert raw == 0, "sanity check: the raw metric really is fooled by the shrink"
-    assert fixed == 4, "normalizing first must recover the true active-dimension count"
+
+def test_participation_ratio_near_dimensionality_for_isotropic_features():
+    """Independent variance in every dimension -- the healthy extreme -- should read
+    close to the full feature dimension, not some small fraction of it."""
+    torch.manual_seed(0)
+    x = torch.randn(2000, 64)
+    assert participation_ratio(x) > 55  # close to 64, allowing for finite-sample noise
+
+
+def test_participation_ratio_is_scale_invariant():
+    """The exact bug this function exists to prevent: a cosine-similarity-based SSL loss
+    doesn't care about the overall magnitude of the backbone's output, so weight decay
+    can (and does, in practice) shrink it steadily over hundreds of epochs. A
+    fixed-threshold variance count reads that shrink as collapse; this ratio must not."""
+    torch.manual_seed(0)
+    x = torch.randn(500, 32)
+    full_scale = participation_ratio(x)
+    tiny_scale = participation_ratio(x * 1e-4)
+    # exact under real-number arithmetic; allow a little SVD roundoff at very different scales
+    assert tiny_scale == pytest.approx(full_scale, rel=1e-2)
+
+
+def test_participation_ratio_bounded_by_dimensionality():
+    torch.manual_seed(0)
+    x = torch.randn(300, 20)
+    assert 1.0 <= participation_ratio(x) <= 20.0
 
 
 def test_project_2d_shape_and_subsample():

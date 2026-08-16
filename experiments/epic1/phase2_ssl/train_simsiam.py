@@ -3,8 +3,10 @@
 The optimisation-asymmetry answer to representation collapse: a predictor on one branch
 plus stop-gradient on the target branch, no negatives, no EMA, no queue. Unlike NT-Xent,
 SimSiam's loss is NOT diagnostic of collapse -- a healthy run and a collapsed run both
-drive the loss toward -1, so every checkpoint also tracks `active_units` on the frozen
-backbone's features to tell them apart. See docs/epic1_phase2_plan_26-07-2026.md (Step 4).
+drive the loss toward -1, so every checkpoint also tracks `participation_ratio` (the
+effective rank of the feature covariance -- scale- and dimension-free, see ssl_eval.py)
+on the frozen backbone's features to tell them apart. See
+docs/epic1_phase2_plan_26-07-2026.md (Step 4).
 
 Usage (on the PC, RTX 4090):
 
@@ -303,7 +305,7 @@ def main() -> None:
     run_dir = make_run_dir(cfg.out_root, cfg.run_id)
     ckpt_epochs = log_spaced_epochs(cfg.epochs)
     print(f"run dir    : {run_dir}")
-    print(f"checkpoints: epochs {sorted(ckpt_epochs)} (probe/kNN/active_units at these too)\n")
+    print(f"checkpoints: epochs {sorted(ckpt_epochs)} (probe/kNN/rank at these too)\n")
 
     stop_gradient = not cfg.no_stop_gradient
     with RunLogger(run_dir, cfg) as logger:
@@ -328,13 +330,14 @@ def main() -> None:
                 eval_seconds = time.time() - t_eval
                 log_kwargs.update(
                     linear_probe=metrics["linear_probe"], knn=metrics["knn"],
-                    active_units=metrics["active_units"], eval_seconds=eval_seconds,
+                    participation_ratio=metrics["participation_ratio"],
+                    eval_seconds=eval_seconds,
                 )
-                # active_units is the diagnostic that matters here: loss alone can't
-                # distinguish a healthy run from a collapsed one.
+                # participation_ratio is the diagnostic that matters here: loss alone
+                # can't distinguish a healthy run from a collapsed one.
                 line += (f"  probe {metrics['linear_probe'] * 100:5.1f}%  "
                         f"knn {metrics['knn'] * 100:5.1f}%  "
-                        f"active {metrics['active_units']:>4}/{backbone.out_dim}  "
+                        f"rank {metrics['participation_ratio']:6.1f}/{backbone.out_dim}  "
                         f"(eval {eval_seconds:.1f}s)")
                 save_checkpoint(run_dir / "ckpt" / f"epoch_{epoch:04d}.pt",
                                model, optimizer, epoch, cfg)

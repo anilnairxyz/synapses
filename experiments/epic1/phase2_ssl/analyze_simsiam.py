@@ -29,7 +29,7 @@ from sklearn.preprocessing import StandardScaler  # noqa: E402
 
 from synapses import get_device  # noqa: E402
 from synapses.data import CIFAR10_CLASSES, cifar10_eval_loaders  # noqa: E402
-from synapses.ssl_eval import active_units_normalized, embed_dataset, project_2d  # noqa: E402
+from synapses.ssl_eval import embed_dataset, participation_ratio, project_2d  # noqa: E402
 from synapses.viz import bar_by_class, latent_scatter  # noqa: E402
 from train_simsiam import load_simsiam  # noqa: E402
 
@@ -72,11 +72,11 @@ def main() -> None:
     test_x, test_y = embed_dataset(backbone, test_loader, device)
     print(f"embedded   : {train_x.shape[0]} train / {test_x.shape[0]} test (512-d each)")
 
-    # Scale-invariant re-check: metrics.jsonl logged the pre-fix (raw, magnitude-
-    # sensitive) active_units for runs finished before this fix landed. Recomputed here
-    # from the saved checkpoint -- no retraining needed to get the corrected number.
-    au = active_units_normalized(test_x)
-    print(f"active units (scale-invariant): {au}/{test_x.shape[1]}")
+    # Effective rank of the feature covariance -- scale- and dimension-free, so it can't
+    # be fooled by the magnitude drift a cosine-based loss + weight decay produces over
+    # training. Recomputed here from the saved checkpoint -- no retraining needed.
+    rank = participation_ratio(test_x)
+    print(f"participation ratio (effective rank): {rank:.1f}/{test_x.shape[1]}")
 
     # Fit the same way synapses.metrics.linear_probe does, but keep the fitted classifier
     # so we can pull per-sample predictions (linear_probe only returns aggregate accuracy).

@@ -10,11 +10,10 @@ from __future__ import annotations
 
 import numpy as np
 import torch
-import torch.nn.functional as F
 from sklearn.manifold import TSNE
 from sklearn.neighbors import KNeighborsClassifier
 
-from synapses.metrics import active_units, linear_probe
+from synapses.metrics import linear_probe
 
 
 def _to_numpy(x: torch.Tensor | np.ndarray) -> np.ndarray:
@@ -51,22 +50,32 @@ def knn_accuracy(
     return float(clf.score(_to_numpy(test_x), _to_numpy(test_y)))
 
 
-def active_units_normalized(features: torch.Tensor, threshold: float = 0.01) -> int:
-    """``active_units`` on L2-normalized features.
+def participation_ratio(features: torch.Tensor) -> float:
+    """Effective rank of the feature covariance -- a scale- *and* dimension-free
+    collapse diagnostic: ``(sum(eigenvalues))^2 / sum(eigenvalues^2)``, bounded in
+    ``[1, D]``.
 
-    A cosine-similarity-based loss (NT-Xent, SimSiam's negative cosine, ...) is
-    completely invariant to the overall *magnitude* of the backbone's output -- only
-    direction matters. With nothing anchoring that magnitude, weight decay can (and, in
-    practice, does) shrink it steadily over hundreds of epochs, which drives every
-    dimension's *raw* variance toward zero even while the representation's *direction*
-    -- what the loss and the linear probe actually care about -- stays perfectly
-    informative. Raw :func:`synapses.metrics.active_units` would misread that scale
-    drift as collapse. Normalizing each row to unit length first removes the confound:
-    the count now reflects genuine per-dimension informational collapse, in the same
-    space the loss itself operates in, not an arbitrary absolute-magnitude threshold
-    crossing.
+    ``1`` means every sample's feature vector points the same way -- one effective
+    dimension, full collapse. ``D`` means all ``D`` dimensions carry equal, independent
+    variance -- maximally spread, the healthy extreme.
+
+    Two problems, one fix. (1) A cosine-similarity-based loss (NT-Xent, SimSiam's
+    negative cosine, ...) is invariant to the overall *magnitude* of the backbone's
+    output, so weight decay can shrink that magnitude steadily over hundreds of epochs
+    with nothing anchoring it -- a *raw*, absolute-threshold variance count (Phase 1's
+    ``active_units``) reads that shrink as collapse even when the representation's
+    *direction* stays fully informative. (2) Separately, and more fundamentally: a fixed
+    absolute threshold doesn't generalise across dimensionalities at all. An
+    isotropically-spread 512-d embedding has roughly ``1/512`` of its variance per
+    dimension purely from being spread over 512 directions -- comfortably below any
+    threshold calibrated for Phase 1's 2-128-dim VAE latents, at *any* scale. This ratio
+    sidesteps both: multiplying every feature by a constant leaves it unchanged (proof:
+    scaling eigenvalues by ``c`` scales the formula by ``c^2 / c^2 = 1``), and it needs
+    no absolute threshold to calibrate in the first place.
     """
-    return active_units(F.normalize(features, dim=1), threshold=threshold)
+    x = features.double() - features.double().mean(dim=0, keepdim=True)
+    eig = torch.linalg.svdvals(x) ** 2  # proportional to the covariance eigenvalues
+    return (eig.sum() ** 2 / (eig.pow(2).sum() + 1e-12)).item()
 
 
 def evaluate_representation(
@@ -76,28 +85,19 @@ def evaluate_representation(
     device: torch.device | str,
     k: int = 20,
     max_iter: int = 3000,
-    active_units_threshold: float = 0.01,
 ) -> dict:
     """Freeze the backbone, embed both splits once, report the headline metrics.
 
-    ``active_units`` (reused from Phase 1's VAE analysis, already generic over any
-    representation) counts how many feature dimensions actually vary across the test
-    set -- a collapsed representation (every input mapping to ~the same vector) crashes
-    this number toward zero even when the training loss looks fine. Computed on
-    L2-normalized features (see :func:`active_units_normalized`) so a whole-vector
-    magnitude drift -- expected under weight decay for any magnitude-invariant SSL loss
-    -- can't be mistaken for collapse. Computed from the test embeddings already
-    gathered here, no extra forward pass. The absolute threshold was tuned for
-    VAE-latent scale and isn't necessarily calibrated for a 512-d CNN feature space --
-    every use of this number here is a paired comparison (healthy vs. collapsed run,
-    same threshold, same feature scale), not a claim about an absolute "healthy" count.
+    ``participation_ratio`` (see above) is the collapse diagnostic: computed from the
+    test embeddings already gathered here, no extra forward pass, no threshold to
+    calibrate.
     """
     train_x, train_y = embed_dataset(model, train_loader, device)
     test_x, test_y = embed_dataset(model, test_loader, device)
     return {
         "linear_probe": linear_probe(train_x, train_y, test_x, test_y, max_iter=max_iter),
         "knn": knn_accuracy(train_x, train_y, test_x, test_y, k=k),
-        "active_units": active_units_normalized(test_x, threshold=active_units_threshold),
+        "participation_ratio": participation_ratio(test_x),
     }
 
 
