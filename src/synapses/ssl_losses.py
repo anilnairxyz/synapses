@@ -2,7 +2,8 @@
 
 Written by hand and unit-tested against independent reference computations, the same
 treatment ``vae_loss`` got in Phase 1 -- these are the objects of study, not library calls.
-Home for SimCLR's NT-Xent now; SimSiam's and VICReg's losses join it in Steps 4-5.
+Home for SimCLR's NT-Xent and SimSiam's symmetrised negative cosine; VICReg's loss joins
+them in Step 5.
 """
 
 from __future__ import annotations
@@ -40,3 +41,42 @@ def nt_xent_loss(z1: torch.Tensor, z2: torch.Tensor, temperature: float = 0.5) -
     # Row i's positive is the other view of the same image: i -> i+N, and i+N -> i.
     pos_idx = (torch.arange(2 * n, device=z.device) + n) % (2 * n)
     return F.cross_entropy(sim, pos_idx)
+
+
+def simsiam_loss(
+    p1: torch.Tensor,
+    z1: torch.Tensor,
+    p2: torch.Tensor,
+    z2: torch.Tensor,
+    stop_gradient: bool = True,
+) -> torch.Tensor:
+    """SimSiam's symmetrised negative cosine similarity.
+
+    ``D(p, z) = -cosine_sim(p, z)``, evaluated with ``z`` detached from the graph when
+    ``stop_gradient`` is True. The loss is ``0.5 * (D(p1, z2) + D(p2, z1))``: each
+    branch's *prediction* is matched against the *other* branch's *target*.
+
+    ``stop_gradient`` is deliberately exposed as a flag, not hardcoded to True: this
+    single boolean **is** the "remove the stop-gradient" break-it experiment. No
+    negatives, no EMA, no queue -- collapse is avoided (when it is avoided) purely by
+    this asymmetry between the predicted and the target branch, so being able to switch
+    it off in one place is what makes the mechanism directly testable.
+
+    Args:
+        p1, p2: predictor outputs for view 1 and view 2, ``(N, D)``.
+        z1, z2: projector outputs (pre-predictor) for view 1 and view 2, ``(N, D)``.
+        stop_gradient: detach the target branch (the real SimSiam) if True; leave the
+            graph intact (the ablation) if False.
+
+    Returns:
+        A scalar in ``[-1, 1]``.
+    """
+
+    def neg_cos_sim(p: torch.Tensor, z: torch.Tensor) -> torch.Tensor:
+        if stop_gradient:
+            z = z.detach()
+        p = F.normalize(p, dim=1)
+        z = F.normalize(z, dim=1)
+        return -(p * z).sum(dim=1).mean()
+
+    return 0.5 * (neg_cos_sim(p1, z2) + neg_cos_sim(p2, z1))

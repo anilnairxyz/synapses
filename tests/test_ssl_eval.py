@@ -44,9 +44,11 @@ def test_evaluate_representation_keys_and_quality():
     test_loader = DataLoader(TensorDataset(x[1::2], y[1::2]), batch_size=16)
 
     out = evaluate_representation(_Identity(), train_loader, test_loader, device="cpu")
-    assert set(out) == {"linear_probe", "knn"}
+    assert set(out) == {"linear_probe", "knn", "active_units"}
     assert out["linear_probe"] > 0.9
     assert out["knn"] > 0.9
+    # x has 4 feature dims and both vary across the (well-separated) data -> all active
+    assert out["active_units"] == 4
 
 
 def test_project_2d_shape_and_subsample():

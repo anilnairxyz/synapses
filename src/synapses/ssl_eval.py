@@ -13,7 +13,7 @@ import torch
 from sklearn.manifold import TSNE
 from sklearn.neighbors import KNeighborsClassifier
 
-from synapses.metrics import linear_probe
+from synapses.metrics import active_units, linear_probe
 
 
 def _to_numpy(x: torch.Tensor | np.ndarray) -> np.ndarray:
@@ -57,13 +57,26 @@ def evaluate_representation(
     device: torch.device | str,
     k: int = 20,
     max_iter: int = 3000,
+    active_units_threshold: float = 0.01,
 ) -> dict:
-    """Freeze the backbone, embed both splits once, report the two headline metrics."""
+    """Freeze the backbone, embed both splits once, report the headline metrics.
+
+    ``active_units`` (reused from Phase 1's VAE analysis, already generic over any
+    representation) counts how many feature dimensions actually vary across the test
+    set -- a collapsed representation (every input mapping to ~the same vector) crashes
+    this number toward zero even when the training loss looks fine. Computed from the
+    test embeddings already gathered here, no extra forward pass. The absolute threshold
+    was tuned for VAE-latent scale and isn't necessarily calibrated for a 512-d CNN
+    feature space -- every use of this number here is a paired comparison (healthy vs.
+    collapsed run, same threshold, same feature scale), not a claim about an absolute
+    "healthy" count.
+    """
     train_x, train_y = embed_dataset(model, train_loader, device)
     test_x, test_y = embed_dataset(model, test_loader, device)
     return {
         "linear_probe": linear_probe(train_x, train_y, test_x, test_y, max_iter=max_iter),
         "knn": knn_accuracy(train_x, train_y, test_x, test_y, k=k),
+        "active_units": active_units(test_x, threshold=active_units_threshold),
     }
 
 
