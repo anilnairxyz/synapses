@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 from sklearn.manifold import TSNE
 from sklearn.neighbors import KNeighborsClassifier
 
@@ -50,6 +51,24 @@ def knn_accuracy(
     return float(clf.score(_to_numpy(test_x), _to_numpy(test_y)))
 
 
+def active_units_normalized(features: torch.Tensor, threshold: float = 0.01) -> int:
+    """``active_units`` on L2-normalized features.
+
+    A cosine-similarity-based loss (NT-Xent, SimSiam's negative cosine, ...) is
+    completely invariant to the overall *magnitude* of the backbone's output -- only
+    direction matters. With nothing anchoring that magnitude, weight decay can (and, in
+    practice, does) shrink it steadily over hundreds of epochs, which drives every
+    dimension's *raw* variance toward zero even while the representation's *direction*
+    -- what the loss and the linear probe actually care about -- stays perfectly
+    informative. Raw :func:`synapses.metrics.active_units` would misread that scale
+    drift as collapse. Normalizing each row to unit length first removes the confound:
+    the count now reflects genuine per-dimension informational collapse, in the same
+    space the loss itself operates in, not an arbitrary absolute-magnitude threshold
+    crossing.
+    """
+    return active_units(F.normalize(features, dim=1), threshold=threshold)
+
+
 def evaluate_representation(
     model: torch.nn.Module,
     train_loader: torch.utils.data.DataLoader,
@@ -64,19 +83,21 @@ def evaluate_representation(
     ``active_units`` (reused from Phase 1's VAE analysis, already generic over any
     representation) counts how many feature dimensions actually vary across the test
     set -- a collapsed representation (every input mapping to ~the same vector) crashes
-    this number toward zero even when the training loss looks fine. Computed from the
-    test embeddings already gathered here, no extra forward pass. The absolute threshold
-    was tuned for VAE-latent scale and isn't necessarily calibrated for a 512-d CNN
-    feature space -- every use of this number here is a paired comparison (healthy vs.
-    collapsed run, same threshold, same feature scale), not a claim about an absolute
-    "healthy" count.
+    this number toward zero even when the training loss looks fine. Computed on
+    L2-normalized features (see :func:`active_units_normalized`) so a whole-vector
+    magnitude drift -- expected under weight decay for any magnitude-invariant SSL loss
+    -- can't be mistaken for collapse. Computed from the test embeddings already
+    gathered here, no extra forward pass. The absolute threshold was tuned for
+    VAE-latent scale and isn't necessarily calibrated for a 512-d CNN feature space --
+    every use of this number here is a paired comparison (healthy vs. collapsed run,
+    same threshold, same feature scale), not a claim about an absolute "healthy" count.
     """
     train_x, train_y = embed_dataset(model, train_loader, device)
     test_x, test_y = embed_dataset(model, test_loader, device)
     return {
         "linear_probe": linear_probe(train_x, train_y, test_x, test_y, max_iter=max_iter),
         "knn": knn_accuracy(train_x, train_y, test_x, test_y, k=k),
-        "active_units": active_units(test_x, threshold=active_units_threshold),
+        "active_units": active_units_normalized(test_x, threshold=active_units_threshold),
     }
 
 

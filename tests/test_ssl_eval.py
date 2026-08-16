@@ -5,7 +5,14 @@ from __future__ import annotations
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
-from synapses.ssl_eval import embed_dataset, evaluate_representation, knn_accuracy, project_2d
+from synapses.metrics import active_units
+from synapses.ssl_eval import (
+    active_units_normalized,
+    embed_dataset,
+    evaluate_representation,
+    knn_accuracy,
+    project_2d,
+)
 
 
 class _Identity(torch.nn.Module):
@@ -49,6 +56,24 @@ def test_evaluate_representation_keys_and_quality():
     assert out["knn"] > 0.9
     # x has 4 feature dims and both vary across the (well-separated) data -> all active
     assert out["active_units"] == 4
+
+
+def test_active_units_normalized_survives_magnitude_shrink():
+    """The exact bug this function exists to prevent: two well-separated clusters (a
+    genuinely informative, high-variance-by-direction representation) scaled down to a
+    tiny uniform magnitude -- the kind of drift weight decay causes over hundreds of
+    epochs under a magnitude-invariant (cosine) loss. Raw active_units, which only looks
+    at absolute variance, is fooled into reporting near-total collapse. Normalizing to
+    unit length first is scale-invariant and reports the true, undiminished count."""
+    torch.manual_seed(0)
+    a = torch.randn(100, 4) + 5.0
+    b = torch.randn(100, 4) - 5.0
+    x = torch.cat([a, b]) * 1e-4  # direction unchanged, magnitude crushed
+
+    raw = active_units(x, threshold=0.01)
+    fixed = active_units_normalized(x, threshold=0.01)
+    assert raw == 0, "sanity check: the raw metric really is fooled by the shrink"
+    assert fixed == 4, "normalizing first must recover the true active-dimension count"
 
 
 def test_project_2d_shape_and_subsample():

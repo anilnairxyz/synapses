@@ -28,7 +28,7 @@ from sklearn.preprocessing import StandardScaler  # noqa: E402
 
 from synapses import get_device  # noqa: E402
 from synapses.data import CIFAR10_CLASSES, cifar10_eval_loaders  # noqa: E402
-from synapses.ssl_eval import embed_dataset, project_2d  # noqa: E402
+from synapses.ssl_eval import active_units_normalized, embed_dataset, project_2d  # noqa: E402
 from synapses.viz import bar_by_class, latent_scatter  # noqa: E402
 from train_simclr import load_simclr  # noqa: E402
 
@@ -70,6 +70,9 @@ def main() -> None:
     train_x, train_y = embed_dataset(backbone, train_loader, device)
     test_x, test_y = embed_dataset(backbone, test_loader, device)
     print(f"embedded   : {train_x.shape[0]} train / {test_x.shape[0]} test (512-d each)")
+
+    au = active_units_normalized(test_x)
+    print(f"active units (scale-invariant): {au}/{test_x.shape[1]}")
 
     # Fit the same way synapses.metrics.linear_probe does, but keep the fitted classifier
     # so we can pull per-sample predictions (linear_probe only returns aggregate accuracy).
