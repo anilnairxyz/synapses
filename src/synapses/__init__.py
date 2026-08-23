@@ -23,7 +23,7 @@ from synapses.ssl_eval import (
     participation_ratio,
     project_2d,
 )
-from synapses.ssl_losses import nt_xent_loss, simsiam_loss
+from synapses.ssl_losses import nt_xent_loss, simsiam_loss, vicreg_loss
 from synapses.vae import MLPVAE, load_vae
 from synapses.viz import (
     bar_by_class,
@@ -82,4 +82,5 @@ __all__ = [
     "project_2d",
     "nt_xent_loss",
     "simsiam_loss",
+    "vicreg_loss",
 ]

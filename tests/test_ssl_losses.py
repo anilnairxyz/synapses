@@ -1,7 +1,7 @@
-"""Verify nt_xent_loss and simsiam_loss by hand, the same treatment vae_loss got in
-Phase 1. A brute-force, unvectorized reference implementation checks that the vectorized
-masked-softmax trick really computes the textbook per-pair formula -- two independently
-written code paths must agree. Run: uv run pytest tests/test_ssl_losses.py -v
+"""Verify nt_xent_loss, simsiam_loss, and vicreg_loss by hand, the same treatment
+vae_loss got in Phase 1. A brute-force, unvectorized reference implementation checks
+that the vectorized masked-softmax trick really computes the textbook per-pair formula
+-- two independently written code paths must agree. Run: uv run pytest tests/test_ssl_losses.py -v
 """
 
 from __future__ import annotations
@@ -12,7 +12,13 @@ import pytest
 import torch
 import torch.nn.functional as F
 
-from synapses.ssl_losses import nt_xent_loss, simsiam_loss
+from synapses.ssl_losses import (
+    _covariance_term,
+    _variance_term,
+    nt_xent_loss,
+    simsiam_loss,
+    vicreg_loss,
+)
 
 
 def _naive_nt_xent(z1: torch.Tensor, z2: torch.Tensor, temperature: float) -> torch.Tensor:
@@ -162,3 +168,94 @@ def test_no_stop_gradient_lets_gradient_reach_every_branch(small_pz):
 
     for name, t in [("p1", p1), ("z1", z1), ("p2", p2), ("z2", z2)]:
         assert t.grad is not None and t.grad.abs().sum() > 0, f"{name} got no gradient"
+
+
+# --- vicreg_loss -------------------------------------------------------------------
+
+
+def test_variance_term_hand_computed():
+    """N=2 symmetric samples [c-d, c+d] have unbiased std = d*sqrt(2) (derived
+    independently of the implementation: sum of squared deviations = 2d^2, divided by
+    N-1=1). Build one dimension with std exactly 2 (hinge contributes 0, >= gamma) and
+    one with std exactly 0.5 (hinge contributes 0.5, < gamma), and check the mean hinge
+    against a value computed by hand."""
+    gamma = 1.0
+    d1 = 2.0 / math.sqrt(2)  # dimension 1: std = 2.0
+    d2 = 0.5 / math.sqrt(2)  # dimension 2: std = 0.5
+    z = torch.tensor([[-d1, -d2], [d1, d2]], dtype=torch.float64)
+
+    result = _variance_term(z, gamma=gamma, eps=0.0)
+    expected = (max(0.0, gamma - 2.0) + max(0.0, gamma - 0.5)) / 2  # (0 + 0.5) / 2
+    assert result.item() == pytest.approx(expected, abs=1e-6)
+
+
+def test_covariance_term_exact_for_perfectly_correlated_dims():
+    """z2 = 2*z1 exactly: Cov(z1, 2*z1) = 2*Var(z1) by bilinearity of covariance, an
+    independently-derived closed form. For a 2x2 covariance matrix the off-diagonal
+    sum-of-squares is 2*cov12^2 (both symmetric entries); dividing by D=2 gives cov12^2."""
+    z1 = torch.tensor([1.0, 2.0, 3.0, 4.0, 5.0], dtype=torch.float64)
+    z2 = 2 * z1
+    z = torch.stack([z1, z2], dim=1)
+
+    z1c = z1 - z1.mean()
+    var1 = (z1c**2).sum() / (5 - 1)
+    cov12 = 2 * var1  # Cov(z1, 2*z1) = 2*Var(z1)
+    expected = cov12**2
+
+    result = _covariance_term(z)
+    assert result.item() == pytest.approx(expected.item(), rel=1e-9)
+
+
+def test_covariance_term_smaller_for_independent_dims():
+    torch.manual_seed(0)
+    x = torch.randn(300, dtype=torch.float64)
+    correlated = torch.stack([x, 2 * x], dim=1)
+    independent = torch.randn(300, 2, dtype=torch.float64)
+    assert _covariance_term(independent).item() < _covariance_term(correlated).item()
+
+
+def test_variance_term_no_nan_at_exactly_zero_variance():
+    """The numerical-stability case eps exists for: every sample identical (var=0
+    exactly). sqrt'(0) is infinite without eps, which would poison the gradient."""
+    z = torch.ones(10, 4, dtype=torch.float64, requires_grad=True)
+    loss = _variance_term(z, gamma=1.0, eps=1e-4)
+    assert torch.isfinite(loss)
+    loss.backward()
+    assert torch.isfinite(z.grad).all()
+
+
+def test_var_weight_zero_removes_the_variance_term():
+    """The break-it mechanism, verified directly: with var_weight=0, the returned total
+    must equal inv_weight*inv + cov_weight*cov exactly, even when the variance term
+    itself is large -- proof it is genuinely excluded from the sum, not just small."""
+    torch.manual_seed(0)
+    # near-constant across the batch -> variance term is large if it's included at all
+    z1 = 0.001 * torch.randn(50, 8, dtype=torch.float64)
+    z2 = torch.randn(50, 8, dtype=torch.float64)
+
+    loss, terms = vicreg_loss(z1, z2, inv_weight=25.0, var_weight=0.0, cov_weight=1.0)
+    # z1 is near-collapsed (hinge ~1) and z2 is healthy (hinge ~0); the term averages
+    # both branches, so ~0.5 is expected -- comfortably above "negligible."
+    assert terms["var"].item() > 0.3, "sanity check: variance really is large here"
+    expected = 25.0 * terms["inv"] + 1.0 * terms["cov"]
+    assert loss.item() == pytest.approx(expected.item(), rel=1e-9)
+
+
+def test_vicreg_terms_are_non_negative():
+    torch.manual_seed(0)
+    z1 = torch.randn(30, 6, dtype=torch.float64)
+    z2 = torch.randn(30, 6, dtype=torch.float64)
+    _, terms = vicreg_loss(z1, z2)
+    assert terms["inv"].item() >= 0
+    assert terms["var"].item() >= 0
+    assert terms["cov"].item() >= 0
+
+
+def test_vicreg_gradient_reaches_both_views():
+    torch.manual_seed(0)
+    z1 = torch.randn(30, 6, dtype=torch.float64, requires_grad=True)
+    z2 = torch.randn(30, 6, dtype=torch.float64, requires_grad=True)
+    loss, _ = vicreg_loss(z1, z2)
+    loss.backward()
+    assert z1.grad is not None and z1.grad.abs().sum() > 0
+    assert z2.grad is not None and z2.grad.abs().sum() > 0
