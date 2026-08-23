@@ -60,6 +60,11 @@ class VICRegConfig:
     var_weight: float = 25.0  # --var-weight 0.0 *is* the break-it experiment
     cov_weight: float = 1.0
     gamma: float = 1.0
+    grad_clip: float = 10.0  # unlike SimCLR/SimSiam's normalised losses, VICReg's raw,
+                             # weighted (25/25/1) MSE-based terms produce much larger
+                             # gradients -- without a cap, lr=0.5 (borrowed from those
+                             # bounded losses) can blow up a weight to Inf within a few
+                             # steps, poisoning every downstream forward pass with NaN.
     warmup_epochs: int = 10
     aug_strength: str = "strong"
     seed: int = 0
@@ -90,6 +95,8 @@ def parse_args() -> VICRegConfig:
                     help="0.0 is the break-it ablation: drops the anti-collapse term")
     p.add_argument("--cov-weight", type=float, default=d.cov_weight)
     p.add_argument("--gamma", type=float, default=d.gamma)
+    p.add_argument("--grad-clip", type=float, default=d.grad_clip,
+                    help="max gradient norm; guards against the unnormalised loss exploding")
     p.add_argument("--warmup-epochs", type=int, default=d.warmup_epochs)
     p.add_argument("--aug-strength", type=str, default=d.aug_strength,
                     choices=["strong", "weak", "minimal"])
@@ -193,7 +200,7 @@ def train_one_epoch(
     optimizer: torch.optim.Optimizer,
     scheduler: torch.optim.lr_scheduler.LambdaLR,
     device: torch.device,
-    inv_w: float, var_w: float, cov_w: float, gamma: float,
+    inv_w: float, var_w: float, cov_w: float, gamma: float, grad_clip: float,
     epoch: int,
     max_batches: int | None = None,
 ) -> dict:
@@ -212,6 +219,10 @@ def train_one_epoch(
 
         optimizer.zero_grad(set_to_none=True)
         loss.backward()
+        # VICReg's raw, weighted (25/25/1) loss produces much larger gradients than
+        # SimCLR/SimSiam's normalised losses -- without a cap, a single step can push a
+        # weight to Inf, which then poisons every downstream forward pass with NaN.
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=grad_clip)
         optimizer.step()
         scheduler.step()
 
@@ -280,7 +291,7 @@ def main() -> None:
             t0 = time.time()
             train_stats = train_one_epoch(
                 model, train_loader, optimizer, scheduler, device,
-                cfg.inv_weight, cfg.var_weight, cfg.cov_weight, cfg.gamma,
+                cfg.inv_weight, cfg.var_weight, cfg.cov_weight, cfg.gamma, cfg.grad_clip,
                 epoch, max_batches,
             )
             seconds = time.time() - t0
