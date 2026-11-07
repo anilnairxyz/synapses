@@ -36,6 +36,13 @@ def test_fixed_grading():
     assert ct.grade_fixed(q(), "85 × 98 = 8,330") == "CORRECT"
     assert ct.grade_fixed(q(), "8331") == "INCORRECT"
     assert ct.grade_fixed(q(), "I don't know") == "ABSTAINS"
+    assert ct.grade_fixed(q(), "8, 330") == "CORRECT"  # digit group split by a space
+    count = q(category="perception", gold_answers=["2"])
+    assert ct.grade_fixed(count, "twice") == "CORRECT"
+    assert ct.grade_fixed(count, "Two times.") == "CORRECT"
+    assert ct.grade_fixed(count, 'The letter \'i\' appears 2 times in "corinthians".') == "CORRECT"
+    assert ct.grade_fixed(q(category="perception", gold_answers=["0"]),
+                          "The letter 'i' does not appear in it.") == "CORRECT"
     letter = q(category="perception", answer_type="letter", gold_answers=["o"])
     assert ct.grade_fixed(letter, "The 4th letter is 'o'.") == "CORRECT"
     assert ct.grade_fixed(letter, "u") == "INCORRECT"

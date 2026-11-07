@@ -311,8 +311,22 @@ def elicit(methods: list[str], k_samples: int, main_temperature: float | None,
 
 # ----------------------------------------------------------------------------- grading
 
+_NUM_WORDS = {w: str(i) for i, w in enumerate(
+    "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen "
+    "fifteen sixteen seventeen eighteen nineteen twenty".split())} | {
+    "once": "1", "twice": "2", "thrice": "3", "none": "0", "no": "0"}
+_NOT_APPEAR = re.compile(r"\b(does not|doesn't|doesnt|never) appears?\b|\bnot present\b")
+
+
 def _ints(text: str) -> list[str]:
-    return [m.replace(",", "") for m in re.findall(r"-?\d[\d,]*", text)]
+    """Integers in the text, in order: digits ("8,330" and the split "789, 664" both count),
+    number words ("twice"), and "does not appear" as 0."""
+    text = re.sub(r"(?<=\d),\s+(?=\d{3}\b)", ",", text.lower())  # "789, 664" -> 789,664
+    if _NOT_APPEAR.search(text):
+        return ["0"]
+    toks = re.findall(r"-?\d[\d,]*\d|-?\d|[a-z]+", text)
+    out = [t.replace(",", "") for t in toks if t[-1].isdigit()]
+    return out or [_NUM_WORDS[t] for t in toks if t in _NUM_WORDS]
 
 
 def canonical(q: dict, answer: str) -> str | None:
