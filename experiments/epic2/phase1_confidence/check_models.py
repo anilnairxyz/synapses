@@ -25,6 +25,7 @@ Model names, by where they run:
   anthropic/claude-haiku-5-5            personal key: ANTHROPIC_API_KEY
   openai/gpt-4o-mini                    personal key: OPENAI_API_KEY
   openai-api/foundry/<deployment>       office: FOUNDRY_BASE_URL={endpoint}/openai/v1, FOUNDRY_API_KEY
+                                        (or the office repo's AZURE_OPENAI_ENDPOINT / _API_KEY)
   openai-api/local/<served-model-name>  4090 vLLM: LOCAL_BASE_URL=http://localhost:8000/v1, LOCAL_API_KEY
   mockllm/model                         offline dry run of this script
 """
@@ -33,6 +34,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import re
 import sys
 import time
@@ -45,6 +47,14 @@ try:
     load_dotenv()
 except ImportError:  # keys can come from the environment instead
     pass
+
+# The office ai-model-evals repo keeps its Foundry settings as AZURE_OPENAI_*; reuse them for
+# openai-api/foundry/* models unless FOUNDRY_* is set explicitly.
+if not os.environ.get("FOUNDRY_BASE_URL") and os.environ.get("AZURE_OPENAI_ENDPOINT"):
+    endpoint = os.environ["AZURE_OPENAI_ENDPOINT"].rstrip("/")
+    os.environ["FOUNDRY_BASE_URL"] = endpoint if endpoint.endswith("/openai/v1") else endpoint + "/openai/v1"
+if not os.environ.get("FOUNDRY_API_KEY") and os.environ.get("AZURE_OPENAI_API_KEY"):
+    os.environ["FOUNDRY_API_KEY"] = os.environ["AZURE_OPENAI_API_KEY"]
 
 ARITH = "What is 17 × 23? Reply with the number only."
 JSON_PROMPT = (
