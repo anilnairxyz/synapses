@@ -41,8 +41,10 @@ for entry in "${CONFIGS[@]}"; do
   echo "=== $name ($model) $(date +%H:%M)"
 
   pkill -f "vllm serve" 2>/dev/null; sleep 5
+  # The vLLM venv's bin goes on PATH (as if activated): flashinfer compiles kernels at
+  # start-up and looks for `ninja` there.
   # shellcheck disable=SC2086
-  "$VLLM" serve "$model" $vargs --gpu-memory-utilization 0.90 > "logs/vllm_$name.log" 2>&1 &
+  PATH="$(dirname "$VLLM"):$PATH" "$VLLM" serve "$model" $vargs --gpu-memory-utilization 0.90 > "logs/vllm_$name.log" 2>&1 &
   pid=$!
   until curl -s localhost:8000/v1/models > /dev/null; do
     if ! kill -0 $pid 2> /dev/null; then echo "vLLM failed to start: see logs/vllm_$name.log"; continue 2; fi
