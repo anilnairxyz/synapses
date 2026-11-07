@@ -1,38 +1,36 @@
 # Epic 2 · Phase 1 — Confidence Audit
 
-Can a model tell when its own answer is solid from when it is on shaky ground? Verbal confidence vs sample consistency on a three-tier (easy / hard / unknowable) question set; calibration, discrimination and abstention.
+Can a model tell when its own answer is solid from when it is on shaky ground? Five ways of eliciting confidence (stated after, sample agreement, Kalai threshold, stated before, token probabilities) compared on the same questions, across seven question categories with difficulty levels; calibration, discrimination and abstention per category.
 
 Plan: [`docs/epic2_phase1_plan_03-11-2026.md`](../../../docs/epic2_phase1_plan_03-11-2026.md).
 
 ## Files
 
-- `build_dataset.py`: Step 1. Builds `data/epic2/confidence/questions.jsonl` (100 TriviaQA / 100 SimpleQA / 100 unknowable from KUQ + SelfAware, seed 0).
-- `confidence_task.py`: Steps 2 + 4. The Inspect task: JSON answer + confidence (or ABSTAIN), string-match-then-LLM-judge grading, optional k samples for consistency confidence.
-- `analyze.py`: Step 3. Per run × tier: accuracy, abstention, Brier (+ Murphy), ECE, AUROC for verbal and consistency confidence; reliability and selective/penalised-score plots.
-- Metrics live in `src/synapses/calibration.py` (tested in `tests/test_calibration.py`).
+- `questions/`, `build_questions.py`: Step 1. Builds `data/epic2/confidence/questions.jsonl` (recall, computation, perception, ill-posed, unknowable, forecastable; post-cutoff to come). The file is committed with `git add -f` (`data/` is ignored) so every machine runs the same questions.
+- `check_models.py`: connection check per model (connect, JSON, sampling, logprobs). Results kept in `checks/`.
+- `confidence_task.py`: Step 2. The Inspect task: every method on every question (calls P, B×k, A, D, C×4; forecastable F + FB×k), deterministic grading in the run, judge grading in a second pass. Its docstring lists the options.
+- `chat_template_raw.jinja`: pass-through chat template so base models can be served by vLLM and prompted few-shot.
+- `run_4090.sh`: the 4090 driver: per configuration, start vLLM, run the task, stop vLLM. Logs in `runs/4090/<mode>/<config>/`.
+- `analyze.py`: Step 3, still written for the old three-tier set; to be reworked with meta-d′.
+- Metrics live in `src/synapses/calibration.py` (tested in `tests/test_calibration.py`); task tests in `tests/test_phase1_task.py`.
 
 ## Running
 
-API-only, so this runs on the Mac. Put keys in `.env` (copy `.env.example`), then `uv sync --extra evals`.
+**4090 (WSL, repo root):**
 
 ```bash
-TASK=experiments/epic2/phase1_confidence/confidence_task.py
-LOGS=outputs/epic2/confidence
-GRADER=anthropic/claude-haiku-5-5   # use a grader from the other provider when grading its own family, if you want to rule out self-preference
-
-uv run python experiments/epic2/phase1_confidence/build_dataset.py
-
-# 1. smoke on real models: check parsing and judge verdicts in `uv run inspect view`
-uv run inspect eval $TASK --model anthropic/claude-haiku-5-5 -T limit_per_tier=5 \
-    --model-role grader=$GRADER --log-dir outputs/epic2/smoke-real
-
-# 2. baseline + consistency (k=10) per model
-uv run inspect eval $TASK --model <provider/model> -T k_samples=10 --model-role grader=$GRADER --log-dir $LOGS
-
-# 3. stretch: confidence before the answer
-uv run inspect eval $TASK --model <provider/model> -T elicit=pre --model-role grader=$GRADER --log-dir $LOGS
-
-uv run python experiments/epic2/phase1_confidence/analyze.py --log-dir $LOGS
+experiments/epic2/phase1_confidence/run_4090.sh pilot        # 10 questions per category, every config
+experiments/epic2/phase1_confidence/run_4090.sh full         # overnight
 ```
 
-Cost per model at k=10: about 300 × 11 short generations plus about 300–600 grader calls.
+**Judge pass** (anywhere the grader model is reachable; overwrites the scores in the log):
+
+```bash
+uv run --extra evals inspect score <log.eval> \
+    --scorer experiments/epic2/phase1_confidence/confidence_task.py@confidence_scorer \
+    -S judge=true --model-role grader=<model> --action overwrite --overwrite
+```
+
+**Foundry (office):** copy `confidence_task.py` and `questions.jsonl` into the office repo; run with `--model openai-api/foundry/<deployment>`. Add `-T main_temperature=null` for models that only accept their default temperature (reasoning models), and `-T judge=true --model-role grader=openai-api/foundry/<judge>` to judge in the same run.
+
+**Dry run (Mac):** `uv run --extra evals inspect eval experiments/epic2/phase1_confidence/confidence_task.py --model mockllm/model -T per_category=2 -T k_samples=2`.

@@ -1,0 +1,3 @@
+{#- Pass-through chat template for base models: the messages' text, nothing added, so the
+    chat endpoint behaves like a plain completion of the few-shot prompt. -#}
+{%- for message in messages -%}{{ message['content'] }}{%- endfor -%}

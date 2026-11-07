@@ -231,3 +231,6 @@ generated_image.png
 .DS_Store
 .vscode
 .obsidian
+
+# Local run logs (vLLM servers). Check results to keep go in experiments/epic2/phase1_confidence/checks/
+/logs/

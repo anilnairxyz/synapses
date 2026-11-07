@@ -2,7 +2,7 @@
 
 Detail for **Phase 1** of [`epic2_plan_03-11-2026.md`](epic2_plan_03-11-2026.md). Budget: a few days, followed straight away by Phase 1B (internal-state probe on the 4090).
 
-> **Status (2026-11-06): scope agreed (categories, elicitation methods); model line-up and infrastructure being settled.** The draft code in `experiments/epic2/phase1_confidence/` predates this plan and will be reworked against it.
+> **Status (2026-11-07): Step 1 done except post-cutoff; model line-up and budget agreed; Step 2 (task) built, pilot next on the 4090.**
 
 ## Working framing (in progress)
 
@@ -120,13 +120,31 @@ The interesting results are where methods disagree on the same question.
 
 Per category and per difficulty level: accuracy, Brier (+ Murphy decomposition), ECE, AUROC, **meta-d′/d′**, abstention rate. Plots: reliability per category, accuracy vs confidence across difficulty (hard–easy effect), stated vs implied (method c) confidence, before vs after.
 
-### Models (to settle)
+### Models (agreed 2026-11-07)
 
-Three tiers, as available:
+The phase tests our methods, not the models, so each model is there for what it exercises. Budget: Foundry about $50, personal Claude about $5, personal OpenAI about $10 (kept in reserve); the 4090 costs time only. Connection checks: `experiments/epic2/phase1_confidence/checks/` (4090) and the office repo's `outputs/check_models_2026-11-07.txt` (Foundry).
 
-- **Azure AI Foundry (office account; preferred for hosted runs):** OpenAI-family and Grok models, not the very latest. Runs elsewhere (not from this Mac), so it's a handoff like the GPU: run the eval there, bring the `.eval` logs back for analysis.
-- **Open weights on the 4090:** served locally (e.g. vLLM). Gives token probabilities, a thinking on/off toggle on some families, and the *same models* Phase 1B probes internally, so behaviour and internals can be compared on identical questions. Ideally a base/instruct pair from one family.
-- **Personal OpenAI / Anthropic (paid):** optional, e.g. one Claude model for family coverage.
+| Model | Where | What it tests |
+| --- | --- | --- |
+| Qwen3-8B, thinking off | 4090 | anchor: every method including e; the Phase 1B model |
+| Qwen3-8B, thinking on | 4090 | reasoning on vs off, same weights (main calls at T=0.6, Qwen's advice against greedy thinking) |
+| Qwen3-1.7B, Qwen3-14B-FP8, thinking off | 4090 | size and accuracy spread within one family |
+| Qwen3-8B-Base (P and B only, 5-shot) | 4090 | base vs instruct calibration of token probabilities (Kalai's prediction) |
+| grok-4-1-fast-non-reasoning | Foundry | another vendor, with logprobs |
+| gpt-5-nano | Foundry | closed reasoning model, no logprobs |
+| Phi-4-mini-instruct | Foundry | small and weak (many errors), no logprobs |
+| gpt-4.1-mini (to deploy) | Foundry | OpenAI non-reasoning with logprobs; also the candidate judge |
+| Claude Haiku 5.5, low effort | personal | no temperature control, no logprobs |
+
+Dropped for cost: gpt-4o (about $15 a run; a subset at most) and Claude Sonnet. Full-run cost per model: about 12k calls; Foundry models $0.40–3, judge about $0.50 per model. Costs are re-estimated from the pilot's real token counts before any full run; Azure budget alerts at $25/$40/$50.
+
+Cutoffs matter for forecastable (a model must not have seen the outcome: filter by `resolved_on`) and post-cutoff (to design).
+
+### Step 2 design (agreed 2026-11-07)
+
+One Inspect task (`confidence_task.py`); every method on every question, each call a fresh conversation, so methods line up per question: P (answer only, logprobs: method e), B ×10 at T=1 (method b, agreement with P), A (answer then confidence), D (confidence field first), C at t ∈ {0, 0.5, 0.75, 0.9} (Kalai rule). Forecastable: P(yes) with background, criteria and as-of date, plus 10 samples. Main calls at T=0, samples at T=1. Every prompt carries the same neutral line allowing the model to say a question can't or shouldn't be answered. Base model: 5-shot, answerable categories, P and B only.
+
+Grading: exact for computation and perception; alias match then judge for recall; judge labels for the behaviour categories (corrects premise / clarifies / abstains vs answers or commits); Brier for forecasts. The judge runs as a separate `inspect score` pass, so generation can run where the judge isn't reachable. Judge choice: Qwen3-14B (4090, free) vs gpt-4.1-mini (Foundry), both run on the pilot and kept by agreement with about 30 hand-checked decisions per judged category.
 
 ---
 
