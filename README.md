@@ -1,8 +1,15 @@
 # synapses
 
-A personal exploration of frontier AI — **Representation Learning** and **Mechanistic Interpretability**. The goal is to learn deeply and start contributing to research, not to build products.
+A personal exploration of frontier AI through small, hands-on reproductions of mainline techniques. Each experiment builds the thing small, makes its insides visible, then varies or breaks it on purpose; the results become posts on the [lifeandtimes blog](https://anilnairxyz.github.io/lifeandtimes/) (the "Inside …" series). The goal is to learn deeply and start contributing to research, not to build products.
 
-See [`docs/epic1_plan_12-07-2026.md`](docs/epic1_plan_12-07-2026.md) for the full phased plan.
+## Epics
+
+| Epic | Theme | Status | Plan |
+| ---- | ----- | ------ | ---- |
+| **Epic 2** | Epistemic honesty evals: calibration, sycophancy, belief-vs-answer honesty (for an Apart Research sprint, Track 1) | **Active** | [`docs/epic2_plan_03-11-2026.md`](docs/epic2_plan_03-11-2026.md) |
+| Epic 1 | From Representation to Features: Representation Learning → Mechanistic Interpretability | Paused (2026-11-03) | [`docs/epic1_plan_12-07-2026.md`](docs/epic1_plan_12-07-2026.md) |
+
+**Epic 1, where it stopped.** Phase 1 (VAE) is complete with [`RESULTS.md`](experiments/epic1/phase1_vae/RESULTS.md). Phase 2 (SSL) has SimCLR, SimSiam and VICReg built, analysed and posted. Not done: the Phase 2 side-by-side comparison (Step 6), I-JEPA (Step 7), the Phase 2 close-out, and Phases 3–4 (SAEs, mech interp). Code, plans and checkpoints stay in place so it can be resumed.
 
 ## Hardware & Dev Setup
 
@@ -29,6 +36,7 @@ Implications for any agent working in this repo:
 - Write code that is **runnable on the remote PC/WSL GPU**, but don't assume you can execute it here.
 - CPU-only smoke tests, unit tests, linting, data prep, and visualization scaffolding **can** be validated on the Mac.
 - Anything requiring CUDA / the 4090 must be **handed off to run manually** on the PC. Flag these steps clearly rather than attempting them locally.
+- **Epic 2 is mostly API-driven** (evals against hosted models), so much of it *can* run on the Mac. Open-weights models served on the 4090 are still a handoff.
 
 ### Markdown conventions (for AI agents)
 
@@ -64,7 +72,7 @@ The basic check runs anywhere (CUDA / MPS / CPU). The `--diffusers` test needs t
 ## Repo Layout
 
 ```
-docs/                     Planning docs (the exploration plan)
+docs/                     Planning docs (one master plan per epic, plus per-phase plans)
 src/synapses/             Shared library (device helpers, models, viz — grows over time)
 scripts/                  Runnable utilities (check_setup.py)
 experiments/
@@ -73,9 +81,10 @@ experiments/
     phase2_ssl/           Phase 2 — self-supervised learning
     phase3_sae/           Phase 3 — sparse autoencoders
     phase4_mech_interp/   Phase 4 — mechanistic interpretability
+  epic2/                  Epic 2 — epistemic honesty evals (Apart sprint, Track 1)
 notebooks/                Exploration notebooks
 data/                     Datasets (gitignored)
 outputs/                  Generated artifacts: images, checkpoints, plots (gitignored)
 ```
 
-Experiment scripts import shared code from `synapses`, keeping the longitudinal "From Representation to Features" project (train repr → extract activations → train SAE → analyze) DRY across phases.
+Experiment scripts import shared code from `synapses`, keeping each epic DRY across its phases (Epic 1's longitudinal chain was train repr → extract activations → train SAE → analyze). Shared code is grouped by kind, never by epic or phase.

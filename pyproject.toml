@@ -36,6 +36,15 @@ diffusers = [
     "transformers>=4.44",
     "accelerate>=0.33",
 ]
+# Epic 2: LLM evals (Inspect harness + provider SDKs + HF datasets)
+evals = [
+    "inspect-ai>=0.3",
+    "anthropic>=0.40",
+    "openai>=1.50",
+    "datasets>=2.20",
+    "pandas>=2.2",
+    "wordfreq>=3.1",
+]
 dev = [
     "ruff>=0.6",
     "pytest>=8.0",
