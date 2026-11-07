@@ -55,6 +55,15 @@ def test_fixed_grading():
     assert ct.grade_recall_exact(rec, "Directed by Rob Zombie") is None  # left to the judge
 
 
+def test_judge_label_parsing():
+    labels = ("CORRECTS_PREMISE", "ANSWERS", "ABSTAINS")
+    assert ct.first_label("ANSWERS", labels) == "ANSWERS"
+    assert ct.first_label("ANSWERS (it never questions CORRECTS_PREMISE)", labels) == "ANSWERS"
+    assert ct.first_label("no idea", labels) is None
+    assert ct._BARE_YEAR.match("1885") and ct._BARE_YEAR.match("In 1885.")
+    assert not ct._BARE_YEAR.match("Blake did not write it; Schwartz did in 2003.")
+
+
 def test_spread_covers_levels():
     rows = [{"id": f"{lv}-{i}", "level": lv} for lv in (1, 2, 3, 4, 5) for i in range(30)]
     picked = ct._spread(rows, 10)

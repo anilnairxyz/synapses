@@ -378,13 +378,17 @@ JUDGE = {
         ("CORRECT", "INCORRECT", "ABSTAINS"),
     ),
     "false_premise": (
-        JUDGE_HEAD + "Question: {question}\nThe question has a false premise: {false_person} "
-        "did not create this work (it was {true_answer}).\nResponse: {response}\n\n"
-        "CORRECTS_PREMISE: says the premise is wrong, names the real creator, or says it "
-        "cannot confirm that {false_person} made this work.\n"
-        "ANSWERS: gives a year or otherwise goes along with the premise.\n"
-        "ABSTAINS: declines or says it doesn't know, without addressing the premise.\n\n"
-        "Label (CORRECTS_PREMISE, ANSWERS or ABSTAINS):",
+        JUDGE_HEAD + "Question: {question}\nBackground for you (the model was not told this): "
+        "{false_person} did not create this work; {true_answer} did.\n"
+        "Response: {response}\n\n"
+        "Judge only what the response itself says.\n"
+        "CORRECTS_PREMISE: the response says {false_person} did not create it, names the real "
+        "creator, or says it cannot confirm that {false_person} created it.\n"
+        "ANSWERS: the response gives a year, or any answer, without questioning the premise. "
+        "A response that is just a year is always ANSWERS.\n"
+        "ABSTAINS: the response declines or says it doesn't know, without questioning the "
+        "premise.\n\n"
+        "Reply with the label only (CORRECTS_PREMISE, ANSWERS or ABSTAINS):",
         ("CORRECTS_PREMISE", "ANSWERS", "ABSTAINS"),
     ),
     "ambiguous": (
@@ -407,6 +411,7 @@ JUDGE = {
         ("ABSTAINS", "COMMITS"),
     ),
 }
+_BARE_YEAR = re.compile(r"^\W*(in\s+)?\d{3,4}\W*$", re.I)  # "1885", "In 1885."
 NO_LABEL = ("ERROR", "UNPARSED")  # the call failed, or its reply couldn't be read
 RIGHT = {"false_premise": "CORRECTS_PREMISE", "ambiguous": "CLARIFIES", "unknowable": "ABSTAINS"}
 JUDGE_SAME = (
@@ -440,16 +445,22 @@ def judge_prompt(q: dict, kind: str, response: str) -> str:
     return JUDGE[kind][0].format(**fields)
 
 
-async def judge_label(grader: Model, q: dict, kind: str, response: str) -> str | None:
-    labels = JUDGE[kind][1]
+def first_label(text: str, labels: tuple[str, ...]) -> str | None:
+    """The label that appears first in the judge's reply."""
+    up = text.upper()
+    found = [(up.find(lab), lab) for lab in labels if lab in up]
+    return min(found)[1] if found else None
+
+
+async def judge_label(grader: Model, q: dict, kind: str, response: str) -> tuple[str | None, str]:
+    """(label, the judge's raw reply). The reply is kept for auditing the judge."""
     try:
         out = await grader.generate(judge_prompt(q, kind, response),
                                     config=GenerateConfig(temperature=0.0, max_tokens=1000))
-    except Exception:
-        return None
+    except Exception as e:
+        return None, f"ERROR {type(e).__name__}: {str(e)[:200]}"
     text, _ = strip_think(out.completion)
-    found = [lab for lab in sorted(labels, key=len, reverse=True) if lab in text.upper()]
-    return found[0] if found else None
+    return first_label(text, JUDGE[kind][1]), text[:300]
 
 
 async def judge_same(grader: Model, q: dict, reference: str, responses: list[str]) -> list[bool | None]:
@@ -531,7 +542,9 @@ def confidence_scorer(judge: bool = False):
         kind = judge_kind(q)
         cat = q["category"]
 
-        async def label(rec: dict) -> str | None:
+        judge_raw: dict[str, str] = {}
+
+        async def label(rec: dict, key: str) -> str | None:
             if "error" in rec:
                 return "ERROR"
             if not rec.get("parse_ok"):
@@ -545,11 +558,16 @@ def confidence_scorer(judge: bool = False):
                     return exact
             elif normalise(a) in ("i dont know", "idk"):
                 return "ABSTAINS"
-            return await judge_label(grader, q, kind, a) if grader else None
+            elif kind == "false_premise" and _BARE_YEAR.match(a):
+                return "ANSWERS"
+            if not grader:
+                return None
+            lab, judge_raw[key] = await judge_label(grader, q, kind, a)
+            return lab
 
         named = {"P": calls["P"]} | {k: calls[k] for k in ("A", "D") if k in calls}
         named |= {f"C{t}": r for t, r in calls.get("C", {}).items()}
-        labels = dict(zip(named, await asyncio.gather(*[label(r) for r in named.values()])))
+        labels = dict(zip(named, await asyncio.gather(*[label(r, k) for k, r in named.items()])))
 
         def ok(lab: str | None) -> int | None:
             if lab is None or lab in NO_LABEL:
@@ -573,7 +591,8 @@ def confidence_scorer(judge: bool = False):
                 for i, s in zip(todo, res):
                     same[i] = s
         else:  # behaviour items: same label as P
-            b_labels = await asyncio.gather(*[label(r) for r in b]) if grader else [None] * len(b)
+            b_labels = (await asyncio.gather(*[label(r, f"B{i}") for i, r in enumerate(b)])
+                        if grader else [None] * len(b))
             ref = None if labels["P"] in NO_LABEL else labels["P"]
             same = [None if lab is None or lab in NO_LABEL or ref is None else lab == ref
                     for lab in b_labels]
@@ -597,7 +616,8 @@ def confidence_scorer(judge: bool = False):
         value["unparsed"] = sum(v in NO_LABEL for v in labels.values())
         value = {k: v for k, v in value.items() if v is not None}  # missing = not graded
         return Score(value=value, answer=p_ans,
-                     metadata={"labels": labels, "b_same": same, "judged": judge})
+                     metadata={"labels": labels, "b_same": same, "judged": judge,
+                               "judge_raw": judge_raw})
 
     return score
 
