@@ -23,7 +23,9 @@ experiments/epic2/phase1_confidence/run_4090.sh pilot        # 10 questions per 
 experiments/epic2/phase1_confidence/run_4090.sh full         # overnight
 ```
 
-**Judge pass** (anywhere the grader model is reachable; overwrites the scores in the log):
+**Judge pass on the 4090:** `experiments/epic2/phase1_confidence/judge_4090.sh [full|pilot|full/<config>]` serves Qwen3-14B-FP8 (thinking off) and re-scores every log in place.
+
+**Judge pass, by hand** (anywhere the grader model is reachable; overwrites the scores in the log):
 
 ```bash
 uv run --extra evals inspect score <log.eval> \
