@@ -231,6 +231,3 @@ generated_image.png
 .DS_Store
 .vscode
 .obsidian
-
-# Local run logs (vLLM servers, model checks)
-/logs/
