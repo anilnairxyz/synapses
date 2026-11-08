@@ -369,9 +369,14 @@ def grade_recall_exact(q: dict, answer: str) -> str | None:
     """CORRECT on an exact alias match, ABSTAINS on a bare refusal, else None (judge)."""
     if normalise(answer) in {normalise(g) for g in q["gold_answers"]}:
         return "CORRECT"
-    if is_refusal(answer):
+    if is_refusal(answer) or _AMBIGUOUS.match(normalise(answer)):
         return "ABSTAINS"
     return None
+
+
+# A bare "the question is ambiguous": on a recall question it names no one, so ABSTAINS (agreed on
+# the API held-out set, 2026-11-08). Not in _REFUSAL because on an ambiguous question it CLARIFIES.
+_AMBIGUOUS = re.compile(r"^(?:the )?(?:question )?is ambiguous$|^ambiguous(?: question)?$")
 
 
 # A refusal that gives no reason ("Unknown", "The question cannot be answered as asked.",

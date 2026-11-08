@@ -69,14 +69,19 @@ def write_review() -> None:
 HELDOUT = HERE / "checks" / "heldout_set.jsonl"
 
 
-def write_heldout(per_kind: int, seed: int) -> None:
-    """Held-out check of the judge as it ran: `per_kind` judge decisions per kind drawn uniformly
-    from the re-scored full-run logs (so frequent responses weigh more, as in the results),
-    excluding anything in the gold set. The logged label is stored as `judge` but must not be
-    looked at while labelling; the hand label goes in `label`."""
-    gold = {(r["id"], ct.normalise(r["response"])) for r in map(json.loads, OUT.read_text().splitlines())}
+def write_heldout(per_kind: int, seed: int, runs: tuple[str, ...] = ("4090/full",), out: Path = HELDOUT,
+                  balance: bool = False) -> None:
+    """Held-out check of the judge as it ran: `per_kind` judge decisions per kind drawn from the
+    re-scored logs under runs/<each of runs>/<config>/, excluding anything in the gold set or an earlier
+    held-out set. Uniform over decisions by default (so frequent responses weigh more, as in the
+    results); with `balance`, round-robin over configs so each model gets the same share. The
+    logged label is stored as `judge` but must not be looked at while labelling; the hand label
+    goes in `label`."""
+    seen_before = {(r["id"], ct.normalise(r["response"]))
+                   for path in [OUT, *sorted(OUT.parent.glob("heldout*.jsonl"))] if path != out
+                   for r in map(json.loads, path.read_text().splitlines())}
     calls_by_kind: dict[str, list[dict]] = collections.defaultdict(list)
-    for f in sorted(glob.glob(str(HERE / "runs/4090/full/*/*.eval"))):
+    for f in sorted(f for r in runs for f in glob.glob(str(HERE / "runs" / r / "*/*.eval"))):
         config = Path(f).parent.name
         for s in read_eval_log(f).samples:
             q = s.metadata["q"]
@@ -89,7 +94,7 @@ def write_heldout(per_kind: int, seed: int) -> None:
                 if key.startswith("B"):
                     continue
                 a = (calls["C"][key[1:]] if key.startswith("C") else calls[key]).get("answer", "")
-                if (s.id, ct.normalise(a)) in gold:
+                if (s.id, ct.normalise(a)) in seen_before:
                     continue
                 calls_by_kind[kind].append({"kind": kind, "id": s.id, "question": q["question"],
                                             "background": background(q, kind), "response": a,
@@ -100,6 +105,12 @@ def write_heldout(per_kind: int, seed: int) -> None:
     for kind in SIZES:
         pool, seen, picked = calls_by_kind[kind], set(), []
         rng.shuffle(pool)
+        if balance:  # interleave configs: c1, c2, c3, c4, c1, ...
+            by_config = collections.defaultdict(list)
+            for d in pool:
+                by_config[d["seen_in"].split(":")[0]].append(d)
+            queues = [by_config[c] for c in sorted(by_config)]
+            pool = [q.pop(0) for _ in range(max(map(len, queues), default=0)) for q in queues if q]
         for d in pool:
             k = (d["id"], ct.normalise(d["response"]))
             if k not in seen and len(picked) < per_kind:
@@ -107,8 +118,8 @@ def write_heldout(per_kind: int, seed: int) -> None:
                 picked.append(d)
         rows += [{"gid": f"h{kind[:3]}-{i:02d}", **d, "label": "", "reason": ""}
                  for i, d in enumerate(picked, 1)]
-    HELDOUT.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows))
-    print(f"wrote {len(rows)} items to {HELDOUT}")
+    out.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows))
+    print(f"wrote {len(rows)} items to {out}")
 
 
 def main() -> None:
@@ -116,12 +127,15 @@ def main() -> None:
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--review", action="store_true", help="only write the review sheet")
     ap.add_argument("--heldout", type=int, metavar="N", help="write N held-out items per kind")
+    ap.add_argument("--runs", nargs="+", default=["4090/full"], help="held-out: logs under runs/<RUN>/<config>/")
+    ap.add_argument("--out", type=Path, default=HELDOUT, help="held-out: output file")
+    ap.add_argument("--balance", action="store_true", help="held-out: same share per config")
     args = ap.parse_args()
     if args.review:
         write_review()
         return
     if args.heldout:
-        write_heldout(args.heldout, args.seed)
+        write_heldout(args.heldout, args.seed, tuple(args.runs), args.out, args.balance)
         return
 
     pool: dict[str, dict[tuple, dict]] = collections.defaultdict(dict)  # kind -> key -> item

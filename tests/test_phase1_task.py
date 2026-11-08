@@ -81,6 +81,9 @@ def test_refusal_rule():
     assert ct.rule_label(fp, "false_premise", "Never") is None  # left to the judge
     rec = q(category="recall", gold_answers=["Christophe Beck"])
     assert ct.rule_label(rec, "recall", "Not applicable") == "ABSTAINS"
+    assert ct.rule_label(rec, "recall", "Question is ambiguous") == "ABSTAINS"  # names no one
+    amb = q(category="ill_posed", kind="behaviour", meta={"type": "ambiguous"})
+    assert ct.rule_label(amb, "ambiguous", "The question is ambiguous.") is None  # judge: CLARIFIES
 
 
 def test_spread_covers_levels():
