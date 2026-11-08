@@ -23,6 +23,14 @@ Part 3, controlling for difficulty (meta-d′ was dropped: open-ended answers ha
   - `cells()`: accuracy and AUROC per (model, kind, level, method), for the accuracy-vs-AUROC
     plot (results/cells.csv).
 
+Part 4, the hard-easy effect (Lichtenstein & Fischhoff): per (model, kind, level, method), for
+methods that give a probability, accuracy and mean confidence on answered questions, and
+overconfidence = confidence - accuracy (results/hard_easy.csv). Summarised per (model, kind,
+method) by the *sensitivity* of confidence to difficulty: the slope of mean confidence on
+accuracy across the five levels (1 = confidence falls exactly as accuracy falls, 0 = confidence
+ignores difficulty, the hard-easy effect at its strongest), and overconfidence on the easiest
+and hardest level (results/hard_easy_summary.csv).
+
 Methods (rows), and which answer each row's `correct` refers to:
   P        the plain answer (no confidence of its own; carries accuracy and abstention)
   A, D     stated confidence after / before answering, scored on their own answer
@@ -54,6 +62,7 @@ Usage (repo root):
   uv run --extra evals python experiments/epic2/phase1_confidence/analyze.py check
   uv run --extra evals python experiments/epic2/phase1_confidence/analyze.py discrimination
   uv run --extra evals python experiments/epic2/phase1_confidence/analyze.py difficulty
+  uv run --extra evals python experiments/epic2/phase1_confidence/analyze.py hard-easy
 """
 
 from __future__ import annotations
@@ -337,6 +346,26 @@ def cells(df: pd.DataFrame, min_class: int = 5) -> pd.DataFrame:
     return pd.DataFrame(out)
 
 
+def hard_easy(df: pd.DataFrame, min_n: int = 5) -> tuple[pd.DataFrame, pd.DataFrame]:
+    d = df[df.method.isin(list(AS_PROB)) & df.kind.isin(ANSWERABLE) & (df.abstained == 0)
+           & df.correct.notna() & df.conf.notna()].copy()
+    d["p"] = [AS_PROB[m](c) for m, c in zip(d.method, d.conf)]
+    lv = (d.groupby(["config", "kind", "method", "level"])
+          .agg(n=("p", "size"), acc=("correct", "mean"), conf=("p", "mean")).reset_index())
+    lv["over"] = lv.conf - lv.acc
+    out = []
+    for (config, kind, method), g in lv[lv.n >= min_n].groupby(["config", "kind", "method"]):
+        g = g.sort_values("level")
+        spread = g.acc.max() - g.acc.min()
+        out.append({"config": config, "kind": kind, "method": method, "levels": len(g),
+                    "acc_spread": spread,
+                    # slope undefined when accuracy barely moves across levels
+                    "sensitivity": np.polyfit(g.acc, g.conf, 1)[0] if spread >= 0.3 else np.nan,
+                    "over_easiest": g.over.iloc[0], "over_hardest": g.over.iloc[-1],
+                    "acc_easiest": g.acc.iloc[0], "acc_hardest": g.acc.iloc[-1]})
+    return lv, pd.DataFrame(out)
+
+
 def save(res: pd.DataFrame, name: str) -> pd.DataFrame:
     """Write a results table (only main() does, so tests never touch results/)."""
     RESULTS.mkdir(exist_ok=True)
@@ -346,7 +375,7 @@ def save(res: pd.DataFrame, name: str) -> pd.DataFrame:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("command", choices=["check", "discrimination", "difficulty"])
+    ap.add_argument("command", choices=["check", "discrimination", "difficulty", "hard-easy"])
     ap.add_argument("--refresh", action="store_true", help="re-read the logs")
     args = ap.parse_args()
     df = load(args.refresh)
@@ -363,6 +392,17 @@ def main() -> None:
         reg["cell"] = reg.apply(lambda r: f"{r.slope:+.2f} [{r.lo:+.2f},{r.hi:+.2f}]", axis=1)
         print(reg.pivot(index="term", columns="method", values="cell")
               .reindex(columns=["A", "D", "B", "E", "C"]).to_string())
+    elif args.command == "hard-easy":
+        lv, summ = hard_easy(df)
+        save(lv, "hard_easy")
+        save(summ, "hard_easy_summary")
+        for col, title in (("sensitivity", "Sensitivity of confidence to difficulty (slope of "
+                            "confidence on accuracy across levels; 1 = tracks, 0 = flat; '' = "
+                            "accuracy spread < 0.3)"),
+                           ("over_easiest", "Overconfidence (confidence - accuracy), easiest level"),
+                           ("over_hardest", "Overconfidence, hardest level")):
+            t = summ.pivot_table(index="config", columns=["kind", "method"], values=col)
+            print(f"== {title}\n{t.round(2).fillna('').to_string()}\n")
 
 
 if __name__ == "__main__":

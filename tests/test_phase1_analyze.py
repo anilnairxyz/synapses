@@ -79,3 +79,22 @@ def test_regression_recovers_category_slopes():
     assert res.loc["recall", "lo"] > 0  # informative
     assert res.loc["perception", "lo"] < 0 < res.loc["perception", "hi"]  # no signal
     assert res.loc["perception - recall", "hi"] < 0
+
+
+def test_hard_easy_sensitivity():
+    """Flat confidence: sensitivity 0 and overconfidence grows with difficulty; confidence that
+    equals each level's accuracy: sensitivity 1 and no overconfidence."""
+    import pandas as pd
+
+    rows = []
+    accs = {1: 1.0, 2: 0.75, 3: 0.5, 4: 0.25, 5: 0.0}
+    for config, flat in (("flat", True), ("tracks", False)):
+        for level, acc in accs.items():
+            for i in range(20):
+                rows.append({"config": config, "kind": "computation", "level": level,
+                             "method": "A", "abstained": 0.0, "correct": float(i < 20 * acc),
+                             "conf": 0.95 if flat else acc})
+    _, s = analyze.hard_easy(pd.DataFrame(rows))
+    s = s.set_index("config")
+    assert abs(s.loc["flat", "sensitivity"]) < 1e-9 and abs(s.loc["tracks", "sensitivity"] - 1) < 1e-9
+    assert abs(s.loc["flat", "over_hardest"] - 0.95) < 1e-9 and abs(s.loc["tracks", "over_hardest"]) < 1e-9
