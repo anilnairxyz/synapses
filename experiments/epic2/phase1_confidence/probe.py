@@ -21,8 +21,15 @@ The test set is never used for a choice. Writes (committed; small):
   results/probe_layers.csv    config, train_kind, position, layer, val and test AUROCs
   results/probe_scores.parquet one row per (config, probe, train_kind, position, test question)
 
+--oof (after the main run): out-of-fold scores on the TRAINING questions at the layer and C
+already chosen. 5-fold CV, so each training question is scored by a probe that never saw
+it; about 2,000 questions per kind instead of 150, for the probe-only comparisons (before
+vs after, base vs instruct, across kinds). The layer was chosen on a 20% split of the same
+data, a small optimistic bias shared by every position. Writes results/probe_oof.parquet.
+
 Usage (repo root, PC):
   uv run --extra evals python experiments/epic2/phase1_confidence/probe.py qwen3-8b [--mlp]
+  uv run --extra evals python experiments/epic2/phase1_confidence/probe.py qwen3-8b --oof
 """
 
 from __future__ import annotations
@@ -230,14 +237,69 @@ def run_config(config: str, mlp: bool, n_jobs: int) -> tuple[pd.DataFrame, pd.Da
     return pd.DataFrame(layer_rows), pd.concat(score_rows, ignore_index=True)
 
 
+def oof_scores(X: np.ndarray, y: np.ndarray, C: float) -> np.ndarray:
+    """Out-of-fold logistic-probe scores (5-fold, stratified)."""
+    out = np.zeros(len(y))
+    for a, b in StratifiedKFold(5, shuffle=True, random_state=SEED).split(X, y):
+        out[b] = logreg(C).fit(X[a], y[a]).decision_function(X[b])
+    return out
+
+
+def run_oof(config: str, chosen: pd.DataFrame) -> pd.DataFrame:
+    """Out-of-fold scores on the training set at each probe's chosen layer and C, plus the
+    metadata control."""
+    states, rows = load(config, "train")
+    rows = rows[rows.n_answer > 0]
+    base_cols = rows[["qid", "category", "level", "y", "abstained"]].reset_index(drop=True)
+    out = []
+    for kind in KINDS:
+        a = (rows.category == kind).to_numpy()
+        f = metadata_features(rows[a], kind)
+        cat = [c for c in f.columns if not pd.api.types.is_numeric_dtype(f[c])]
+        num = f.drop(columns=cat).to_numpy(float)
+        X = np.hstack([num, OneHotEncoder(sparse_output=False).fit_transform(f[cat])]) if cat else num
+        s = np.full(len(rows), np.nan)
+        s[a] = oof_scores(X, rows.y.to_numpy()[a], 1.0)
+        out.append(base_cols.assign(config=config, probe="meta", train_kind=kind, position="meta",
+                                    layer=-1, score=s))
+    for r in chosen.itertuples():
+        t0 = time.time()
+        a = (rows.category.isin(KINDS) if r.train_kind == "pooled"
+             else rows.category == r.train_kind).to_numpy()
+        pos_i = POSITIONS.index(r.position)
+        X = np.asarray(states[rows.index.to_numpy()[a], int(r.layer), pos_i, :], dtype=np.float32)
+        s = np.full(len(rows), np.nan)
+        s[a] = oof_scores(X, rows.y.to_numpy()[a], r.C)
+        out.append(base_cols.assign(config=config, probe="logreg", train_kind=r.train_kind,
+                                    position=r.position, layer=int(r.layer), score=s))
+        print(f"  {r.position:8s} {r.train_kind:11s} layer {int(r.layer):2d} "
+              f"({time.time() - t0:.0f}s)", flush=True)
+    return pd.concat(out, ignore_index=True).dropna(subset=["score"])
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("configs", nargs="+")
     ap.add_argument("--mlp", action="store_true", help="add Ni et al.'s MLP at the chosen layer")
     ap.add_argument("--n-jobs", type=int, default=-1)
+    ap.add_argument("--oof", action="store_true",
+                    help="out-of-fold scores on the training set at the chosen layers")
     args = ap.parse_args()
 
     RESULTS.mkdir(exist_ok=True)
+    if args.oof:
+        oof_f = RESULTS / "probe_oof.parquet"
+        sc = pd.read_parquet(RESULTS / "probe_scores.parquet")
+        for config in args.configs:
+            print(f"=== {config} out-of-fold {time.strftime('%H:%M')}", flush=True)
+            chosen = (sc[(sc.config == config) & (sc.probe == "logreg")]
+                      .drop_duplicates(["train_kind", "position"])[["train_kind", "position", "layer", "C"]])
+            oof = run_oof(config, chosen)
+            if oof_f.exists():
+                oof = pd.concat([pd.read_parquet(oof_f).query("config != @config"), oof])
+            oof.to_parquet(oof_f, index=False)
+            print(f"  wrote {oof_f.name}", flush=True)
+        return
     layers_f, scores_f = RESULTS / "probe_layers.csv", RESULTS / "probe_scores.parquet"
     for config in args.configs:
         print(f"=== {config} {time.strftime('%H:%M')}", flush=True)

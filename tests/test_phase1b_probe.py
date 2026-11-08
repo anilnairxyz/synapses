@@ -67,3 +67,14 @@ def test_run_config_finds_the_signal(fake):
     assert lr.groupby("train_kind").size().eq(190).all()
     meta = scores[scores.probe == "meta"]
     assert meta.groupby("train_kind").score.count().eq(60).all()
+
+
+def test_oof_scores_every_training_question(fake):
+    _, scores = probe.run_config("fake", mlp=False, n_jobs=1)
+    chosen = (scores[scores.probe == "logreg"].drop_duplicates(["train_kind", "position"])
+              [["train_kind", "position", "layer", "C"]])
+    oof = probe.run_oof("fake", chosen)
+    from synapses.calibration import auroc
+    g = oof[(oof.probe == "logreg") & (oof.position == "gen") & (oof.train_kind == "pooled")]
+    assert len(g) == 450 and auroc(g.score, g.y) > 0.85
+    assert oof[oof.probe == "meta"].groupby("train_kind").size().eq(150).all()
