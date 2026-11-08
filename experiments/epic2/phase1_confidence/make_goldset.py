@@ -66,13 +66,62 @@ def write_review() -> None:
     print(f"wrote {OUT.parent / 'gold_set_review.md'}")
 
 
+HELDOUT = HERE / "checks" / "heldout_set.jsonl"
+
+
+def write_heldout(per_kind: int, seed: int) -> None:
+    """Held-out check of the judge as it ran: `per_kind` judge decisions per kind drawn uniformly
+    from the re-scored full-run logs (so frequent responses weigh more, as in the results),
+    excluding anything in the gold set. The logged label is stored as `judge` but must not be
+    looked at while labelling; the hand label goes in `label`."""
+    gold = {(r["id"], ct.normalise(r["response"])) for r in map(json.loads, OUT.read_text().splitlines())}
+    calls_by_kind: dict[str, list[dict]] = collections.defaultdict(list)
+    for f in sorted(glob.glob(str(HERE / "runs/4090/full/*/*.eval"))):
+        config = Path(f).parent.name
+        for s in read_eval_log(f).samples:
+            q = s.metadata["q"]
+            kind = ct.judge_kind(q)
+            sc = (s.scores or {}).get("confidence_scorer")
+            if kind is None or sc is None:
+                continue
+            calls = s.metadata["calls"]
+            for key in sc.metadata.get("judge_raw") or {}:
+                if key.startswith("B"):
+                    continue
+                a = (calls["C"][key[1:]] if key.startswith("C") else calls[key]).get("answer", "")
+                if (s.id, ct.normalise(a)) in gold:
+                    continue
+                calls_by_kind[kind].append({"kind": kind, "id": s.id, "question": q["question"],
+                                            "background": background(q, kind), "response": a,
+                                            "judge": sc.metadata["labels"][key],
+                                            "seen_in": f"{config}:{key}"})
+    rng = random.Random(seed)
+    rows = []
+    for kind in SIZES:
+        pool, seen, picked = calls_by_kind[kind], set(), []
+        rng.shuffle(pool)
+        for d in pool:
+            k = (d["id"], ct.normalise(d["response"]))
+            if k not in seen and len(picked) < per_kind:
+                seen.add(k)
+                picked.append(d)
+        rows += [{"gid": f"h{kind[:3]}-{i:02d}", **d, "label": "", "reason": ""}
+                 for i, d in enumerate(picked, 1)]
+    HELDOUT.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows))
+    print(f"wrote {len(rows)} items to {HELDOUT}")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--review", action="store_true", help="only write the review sheet")
+    ap.add_argument("--heldout", type=int, metavar="N", help="write N held-out items per kind")
     args = ap.parse_args()
     if args.review:
         write_review()
+        return
+    if args.heldout:
+        write_heldout(args.heldout, args.seed)
         return
 
     pool: dict[str, dict[tuple, dict]] = collections.defaultdict(dict)  # kind -> key -> item

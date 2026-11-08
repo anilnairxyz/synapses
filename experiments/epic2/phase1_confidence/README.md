@@ -35,6 +35,6 @@ uv run --extra evals inspect score <log.eval> \
     -S judge=true --model-role grader=<model> --action overwrite --overwrite
 ```
 
-**Foundry (office):** copy `confidence_task.py` and `questions.jsonl` into the office repo; run with `--model openai-api/foundry/<deployment>`. Add `-T main_temperature=null` for models that only accept their default temperature (reasoning models), and `-T judge=true --model-role grader=openai-api/foundry/<judge>` to judge in the same run.
+**Foundry (office):** `run_foundry.sh`, `confidence_task.py` and `questions.jsonl` are copied into the office repo's `confidence/` folder (the synapses copies are the source; re-copy after changes). There: `confidence/run_foundry.sh pilot|full [configs]` runs grok-4-1-fast, gpt-4o, phi-4-mini and gpt-5-nano (generation only) into `outputs/confidence/<mode>/<config>/`. The logs are copied into `runs/foundry/<mode>/<config>/` here and judged on the 4090 with `judge_4090.sh foundry`, so every model has the same validated judge.
 
 **Dry run (Mac):** `uv run --extra evals inspect eval experiments/epic2/phase1_confidence/confidence_task.py --model mockllm/model -T per_category=2 -T k_samples=2`.

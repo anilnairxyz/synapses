@@ -216,7 +216,8 @@ def load_questions(path: str | None, categories: str | None, per_category: int |
 
 # ----------------------------------------------------------------------------- solver
 
-_NO_LOGPROBS: set[str] = set()  # models that rejected a logprobs request
+_NO_LOGPROBS: set[str] = set()  # models that rejected logprobs requests
+_LOGPROB_FAILS: dict[str, int] = {}
 
 
 @solver
@@ -236,8 +237,13 @@ def elicit(methods: list[str], k_samples: int, main_temperature: float | None,
                 try:
                     out = await model.generate(prompt, config=cfg(temperature, True))
                 except Exception:  # e.g. reasoning models reject logprobs: retry without
-                    _NO_LOGPROBS.add(model.name)
                     out = await model.generate(prompt, config=cfg(temperature))
+                    # The plain request worked, so logprobs were the likely problem. Give them
+                    # up for the run only after 3 such failures, so one transient error doesn't
+                    # (gpt-5-nano's rejection has an empty message, so it can't be matched).
+                    _LOGPROB_FAILS[model.name] = _LOGPROB_FAILS.get(model.name, 0) + 1
+                    if _LOGPROB_FAILS[model.name] >= 3:
+                        _NO_LOGPROBS.add(model.name)
             else:
                 out = await model.generate(prompt, config=cfg(temperature))
         except Exception as e:  # keep the night's run going; the record shows the error

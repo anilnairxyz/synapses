@@ -4,10 +4,10 @@
 #
 # Usage (from the repo root, in WSL):
 #   experiments/epic2/phase1_confidence/judge_4090.sh check              # gold set, thinking off and on
-#   experiments/epic2/phase1_confidence/judge_4090.sh                    # re-score every log under runs/4090/
-#   experiments/epic2/phase1_confidence/judge_4090.sh full               # only runs/4090/full/
-#   experiments/epic2/phase1_confidence/judge_4090.sh full/qwen3-8b      # one config
-#   THINK=1 experiments/epic2/phase1_confidence/judge_4090.sh full       # re-score with thinking on
+#   experiments/epic2/phase1_confidence/judge_4090.sh                    # re-score every log under runs/
+#   experiments/epic2/phase1_confidence/judge_4090.sh foundry            # only runs/foundry/ (path under runs/)
+#   experiments/epic2/phase1_confidence/judge_4090.sh 4090/full/qwen3-8b # one config
+#   THINK=1 experiments/epic2/phase1_confidence/judge_4090.sh 4090/full  # re-score with thinking on
 #
 # Check results go to checks/judge_check_<think|nothink>.txt (and .jsonl).
 set -u
@@ -23,8 +23,8 @@ else
 fi
 
 if [ "${1:-}" != check ]; then
-  mapfile -t LOGS < <(find "$HERE/runs/4090/${1:-}" -name "*.eval" | sort)
-  [ ${#LOGS[@]} -gt 0 ] || { echo "no .eval logs under $HERE/runs/4090/${1:-}"; exit 1; }
+  mapfile -t LOGS < <(find "$HERE/runs/${1:-}" -name "*.eval" | sort)
+  [ ${#LOGS[@]} -gt 0 ] || { echo "no .eval logs under $HERE/runs/${1:-}"; exit 1; }
 fi
 
 mkdir -p logs

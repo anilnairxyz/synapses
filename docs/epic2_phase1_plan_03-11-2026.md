@@ -133,10 +133,10 @@ The phase tests our methods, not the models, so each model is there for what it 
 | grok-4-1-fast-non-reasoning | Foundry | another vendor, with logprobs |
 | gpt-5-nano | Foundry | closed reasoning model, no logprobs |
 | Phi-4-mini-instruct | Foundry | small and weak (many errors), no logprobs |
-| gpt-4.1-mini (to deploy) | Foundry | OpenAI non-reasoning with logprobs; also the candidate judge |
+| gpt-4o | Foundry | strong OpenAI non-reasoning, with logprobs (replaced gpt-4.1-mini on 2026-11-08: real cost is about $4.70 a run, and the judge is now Qwen3-14B on the 4090, validated on a hand-labelled gold set) |
 | Claude Haiku 5.5, low effort | personal | no temperature control, no logprobs |
 
-Dropped for cost: gpt-4o (about $15 a run; a subset at most) and Claude Sonnet. Full-run cost per model: about 12k calls; Foundry models $0.40–3, judge about $0.50 per model. Costs are re-estimated from the pilot's real token counts before any full run; Azure budget alerts at $25/$40/$50.
+Dropped for cost: Claude Sonnet. (gpt-4o was dropped on a $15 estimate, then brought back once the 4090 runs gave real token counts.) Full-run cost per model: about 12k calls; Foundry models $0.40–3, judge about $0.50 per model. Costs are re-estimated from the pilot's real token counts before any full run; Azure budget alerts at $25/$40/$50.
 
 Cutoffs matter for forecastable (a model must not have seen the outcome: filter by `resolved_on`) and post-cutoff (to design).
 
