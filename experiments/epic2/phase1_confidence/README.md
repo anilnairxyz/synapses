@@ -54,7 +54,7 @@ Plan: [`docs/epic2_phase1b_plan_08-11-2026.md`](../../../docs/epic2_phase1b_plan
 - `probe.py --oof`: out-of-fold probe scores on the training set at the chosen layers (`results/probe_oof.parquet`), for the probe-only comparisons.
 - `analyze_probes.py`: Step 6, on the Mac (no states needed): `results/probe_auroc.csv`, `probe_gaps.csv`, `probe_vs_methods.csv`, `probe_transfer.csv`, `probe_abstain.csv`. About 5 minutes (bootstrap).
 - `plots_probes.py`: Phase 1B figures, `results/figures/probe_*.png`.
-- [`RESULTS_1B.md`](RESULTS_1B.md): Step 7 close-out.
+- [`RESULTS_1B.md`](RESULTS_1B.md): Step 7 close-out. Blog post (draft): lifeandtimes `docs/blog/posts/2026-11-08-probing-confidence.md` (figures as `docs/blog/images/confidence_probe_*.png`).
 
 **4090 order (WSL, repo root):**
 
