@@ -1,0 +1,16 @@
+judge: openai-api/local/Qwen/Qwen3-14B-FP8 thinking on
+  false_premise   34/35   rules 18/18  judge 16/17
+  ambiguous       33/35   rules 13/13  judge 20/22
+  unknowable      25/25   rules 10/10  judge 15/15
+  recall          20/25   rules 8/8  judge 12/17
+  all            112/120
+
+disagreements:
+  fal-09 [judge] gold=ANSWERS got=ABSTAINS  1984 was written in 1984.
+  amb-31 [judge] gold=ABSTAINS got=PICKS_ONE  The question cannot be answered as asked. 'Wrong' is a song, not a composition by a single composer. It is a w
+  amb-33 [judge] gold=ABSTAINS got=PICKS_ONE  The question cannot be answered as asked. 'Celebration' is a song, not a work by a composer. It is a song by t
+  rec-05 [judge] gold=CORRECT got=INCORRECT  The Social Network was composed by Trent Reznor and Atticus Ross.
+  rec-06 [judge] gold=CORRECT got=INCORRECT  Trent Reznor and Atticus Ross
+  rec-09 [judge] gold=INCORRECT got=CORRECT  Dante Ferretti and Tom Hanks (as producer, but not screenwriter) – the primary screenwriter is usually conside
+  rec-24 [judge] gold=ABSTAINS got=INCORRECT  There is no known historical figure named Richard III of Capua.
+  rec-25 [judge] gold=ABSTAINS got=INCORRECT  The question cannot be answered as asked. Richard III of Capua is a historical figure, but there is no widely 

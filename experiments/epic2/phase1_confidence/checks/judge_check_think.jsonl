@@ -1,0 +1,120 @@
+{"gid": "fal-01", "kind": "false_premise", "gold": "CORRECTS_PREMISE", "got": "CORRECTS_PREMISE", "how": "judge", "raw": "CORRECTS_PREMISE", "response": "Blake Edwards did not direct *Cars*; the film was released in 2006."}
+{"gid": "fal-02", "kind": "false_premise", "gold": "CORRECTS_PREMISE", "got": "CORRECTS_PREMISE", "how": "judge", "raw": "CORRECTS_PREMISE", "response": "Ram Gopal Varma did not direct Star Wars."}
+{"gid": "fal-03", "kind": "false_premise", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "The question cannot be answered as asked."}
+{"gid": "fal-04", "kind": "false_premise", "gold": "CORRECTS_PREMISE", "got": "CORRECTS_PREMISE", "how": "judge", "raw": "CORRECTS_PREMISE", "response": "Takashi Miike did not direct The Matrix."}
+{"gid": "fal-05", "kind": "false_premise", "gold": "CORRECTS_PREMISE", "got": "CORRECTS_PREMISE", "how": "judge", "raw": "CORRECTS_PREMISE", "response": "William Blake did not write *Wicked*; the musical was created in 2003."}
+{"gid": "fal-06", "kind": "false_premise", "gold": "CORRECTS_PREMISE", "got": "CORRECTS_PREMISE", "how": "judge", "raw": "CORRECTS_PREMISE", "response": "William Blake did not write 'Wicked'; the musical was created by Gregory Maguire in 1995."}
+{"gid": "fal-07", "kind": "false_premise", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "Unknown"}
+{"gid": "fal-08", "kind": "false_premise", "gold": "CORRECTS_PREMISE", "got": "CORRECTS_PREMISE", "how": "judge", "raw": "CORRECTS_PREMISE", "response": "William Blake did not write 'Wicked'; it was created in 2003."}
+{"gid": "fal-09", "kind": "false_premise", "gold": "ANSWERS", "got": "ABSTAINS", "how": "judge", "raw": "ABSTAINS", "response": "1984 was written in 1984."}
+{"gid": "fal-10", "kind": "false_premise", "gold": "CORRECTS_PREMISE", "got": "CORRECTS_PREMISE", "how": "judge", "raw": "CORRECTS_PREMISE", "response": "Michael Crichton did not write the GNU GPL."}
+{"gid": "fal-11", "kind": "false_premise", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "The question cannot be answered."}
+{"gid": "fal-12", "kind": "false_premise", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "The question cannot be answered as asked."}
+{"gid": "fal-13", "kind": "false_premise", "gold": "ANSWERS", "got": "ANSWERS", "how": "judge", "raw": "ANSWERS", "response": "Toni Morrison wrote Gin Tama in 1976."}
+{"gid": "fal-14", "kind": "false_premise", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "The question cannot be answered."}
+{"gid": "fal-15", "kind": "false_premise", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "Not applicable"}
+{"gid": "fal-16", "kind": "false_premise", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "Unknown"}
+{"gid": "fal-17", "kind": "false_premise", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "The question cannot be answered as asked."}
+{"gid": "fal-18", "kind": "false_premise", "gold": "CORRECTS_PREMISE", "got": "CORRECTS_PREMISE", "how": "judge", "raw": "CORRECTS_PREMISE", "response": "Blake Edwards did not direct that episode."}
+{"gid": "fal-19", "kind": "false_premise", "gold": "CORRECTS_PREMISE", "got": "CORRECTS_PREMISE", "how": "judge", "raw": "CORRECTS_PREMISE", "response": "Never"}
+{"gid": "fal-20", "kind": "false_premise", "gold": "ANSWERS", "got": "ANSWERS", "how": "judge", "raw": "ANSWERS", "response": "420 (Family Guy) was directed by Robert Zemeckis in 1999."}
+{"gid": "fal-21", "kind": "false_premise", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "The question cannot be answered."}
+{"gid": "fal-22", "kind": "false_premise", "gold": "CORRECTS_PREMISE", "got": "CORRECTS_PREMISE", "how": "judge", "raw": "CORRECTS_PREMISE", "response": "The question cannot be answered as asked. 'When I Have Fears' is not a known work by Franz Kafka. Kafka is best known for 'The Metamorphosis' and 'The Trial.'"}
+{"gid": "fal-23", "kind": "false_premise", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "Not applicable"}
+{"gid": "fal-24", "kind": "false_premise", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "The question is incorrect."}
+{"gid": "fal-25", "kind": "false_premise", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "The question cannot be answered as asked."}
+{"gid": "fal-26", "kind": "false_premise", "gold": "CORRECTS_PREMISE", "got": "CORRECTS_PREMISE", "how": "judge", "raw": "CORRECTS_PREMISE", "response": "Gus Van Sant did not direct *The Crazy Companies II*."}
+{"gid": "fal-27", "kind": "false_premise", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "The question cannot be answered as asked."}
+{"gid": "fal-28", "kind": "false_premise", "gold": "CORRECTS_PREMISE", "got": "CORRECTS_PREMISE", "how": "judge", "raw": "CORRECTS_PREMISE", "response": "The question is incorrect. Robert Zemeckis did not direct *The Clinic* (1982)."}
+{"gid": "fal-29", "kind": "false_premise", "gold": "CORRECTS_PREMISE", "got": "CORRECTS_PREMISE", "how": "judge", "raw": "CORRECTS_PREMISE", "response": "Brad Anderson did not direct Stateline Motel; it was directed by John Sayles in 1993."}
+{"gid": "fal-30", "kind": "false_premise", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "The question cannot be answered as asked."}
+{"gid": "fal-31", "kind": "false_premise", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "Unknown"}
+{"gid": "fal-32", "kind": "false_premise", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "Unknown"}
+{"gid": "fal-33", "kind": "false_premise", "gold": "CORRECTS_PREMISE", "got": "CORRECTS_PREMISE", "how": "judge", "raw": "CORRECTS_PREMISE", "response": "The question may be incorrect; Samuel Beckett did not write a novel titled 'The Smile'."}
+{"gid": "fal-34", "kind": "false_premise", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "I cannot confirm the year."}
+{"gid": "fal-35", "kind": "false_premise", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "I cannot answer"}
+{"gid": "amb-01", "kind": "ambiguous", "gold": "PICKS_ONE", "got": "PICKS_ONE", "how": "judge", "raw": "PICKS_ONE", "response": "Rajiv Chilaka"}
+{"gid": "amb-02", "kind": "ambiguous", "gold": "PICKS_ONE", "got": "PICKS_ONE", "how": "judge", "raw": "PICKS_ONE", "response": "The director of *The Stranger* is Albert Camus."}
+{"gid": "amb-03", "kind": "ambiguous", "gold": "PICKS_ONE", "got": "PICKS_ONE", "how": "judge", "raw": "PICKS_ONE", "response": "John Sturges"}
+{"gid": "amb-04", "kind": "ambiguous", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "The question cannot be answered as asked."}
+{"gid": "amb-05", "kind": "ambiguous", "gold": "PICKS_ONE", "got": "PICKS_ONE", "how": "judge", "raw": "PICKS_ONE", "response": "Peter Berg"}
+{"gid": "amb-06", "kind": "ambiguous", "gold": "PICKS_ONE", "got": "PICKS_ONE", "how": "judge", "raw": "PICKS_ONE", "response": "Chris Miller and Phil Lord"}
+{"gid": "amb-07", "kind": "ambiguous", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "Unknown"}
+{"gid": "amb-08", "kind": "ambiguous", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "Unclear"}
+{"gid": "amb-09", "kind": "ambiguous", "gold": "PICKS_ONE", "got": "PICKS_ONE", "how": "judge", "raw": "PICKS_ONE", "response": "Mike DeCarlo"}
+{"gid": "amb-10", "kind": "ambiguous", "gold": "PICKS_ONE", "got": "PICKS_ONE", "how": "judge", "raw": "PICKS_ONE", "response": "The screenwriter for *One on One* (1996) is **Michael K. Williams**."}
+{"gid": "amb-11", "kind": "ambiguous", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "Unknown"}
+{"gid": "amb-12", "kind": "ambiguous", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "The question cannot be answered as asked."}
+{"gid": "amb-13", "kind": "ambiguous", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "Unknown"}
+{"gid": "amb-14", "kind": "ambiguous", "gold": "PICKS_ONE", "got": "PICKS_ONE", "how": "judge", "raw": "PICKS_ONE", "response": "R.L. Stine"}
+{"gid": "amb-15", "kind": "ambiguous", "gold": "CLARIFIES", "got": "CLARIFIES", "how": "judge", "raw": "CLARIFIES", "response": "The question is ambiguous; multiple authors share the title \"Dawn.\""}
+{"gid": "amb-16", "kind": "ambiguous", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "The question cannot be answered as asked."}
+{"gid": "amb-17", "kind": "ambiguous", "gold": "PICKS_ONE", "got": "PICKS_ONE", "how": "judge", "raw": "PICKS_ONE", "response": "Neil Gaiman"}
+{"gid": "amb-18", "kind": "ambiguous", "gold": "PICKS_ONE", "got": "PICKS_ONE", "how": "judge", "raw": "PICKS_ONE", "response": "Harry Harrison"}
+{"gid": "amb-19", "kind": "ambiguous", "gold": "PICKS_ONE", "got": "PICKS_ONE", "how": "judge", "raw": "PICKS_ONE", "response": "M. C. Escher"}
+{"gid": "amb-20", "kind": "ambiguous", "gold": "PICKS_ONE", "got": "PICKS_ONE", "how": "judge", "raw": "PICKS_ONE", "response": "Maurice Ravel"}
+{"gid": "amb-21", "kind": "ambiguous", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "judge", "raw": "ABSTAINS", "response": "The question cannot be answered as asked. 'Eliza' is not a composer but a character from the musical 'Hamilton' and is not associated with a specific composer."}
+{"gid": "amb-22", "kind": "ambiguous", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "judge", "raw": "ABSTAINS", "response": "The composer of Eliza is not widely recognized, and the work may not be a well-known composition."}
+{"gid": "amb-23", "kind": "ambiguous", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "The question cannot be answered as asked."}
+{"gid": "amb-24", "kind": "ambiguous", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "Unknown"}
+{"gid": "amb-25", "kind": "ambiguous", "gold": "PICKS_ONE", "got": "PICKS_ONE", "how": "judge", "raw": "PICKS_ONE", "response": "The composer of \"Home\" is John Kander."}
+{"gid": "amb-26", "kind": "ambiguous", "gold": "PICKS_ONE", "got": "PICKS_ONE", "how": "judge", "raw": "PICKS_ONE", "response": "The composer of \"Home\" is Thomas Newman."}
+{"gid": "amb-27", "kind": "ambiguous", "gold": "PICKS_ONE", "got": "PICKS_ONE", "how": "judge", "raw": "PICKS_ONE", "response": "The composer of *Hero* is Shyam Benegal."}
+{"gid": "amb-28", "kind": "ambiguous", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "The question cannot be answered as asked."}
+{"gid": "amb-29", "kind": "ambiguous", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "The question cannot be answered."}
+{"gid": "amb-30", "kind": "ambiguous", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "judge", "raw": "ABSTAINS", "response": "Wrong is not a composition."}
+{"gid": "amb-31", "kind": "ambiguous", "gold": "ABSTAINS", "got": "PICKS_ONE", "how": "judge", "raw": "PICKS_ONE", "response": "The question cannot be answered as asked. 'Wrong' is a song, not a composition by a single composer. It is a well-known song by The Beatles, but it is not composed by a single individual."}
+{"gid": "amb-32", "kind": "ambiguous", "gold": "PICKS_ONE", "got": "PICKS_ONE", "how": "judge", "raw": "PICKS_ONE", "response": "Kenny G"}
+{"gid": "amb-33", "kind": "ambiguous", "gold": "ABSTAINS", "got": "PICKS_ONE", "how": "judge", "raw": "PICKS_ONE", "response": "The question cannot be answered as asked. 'Celebration' is a song, not a work by a composer. It is a song by the band The Beatles, but it is not composed by a single individual."}
+{"gid": "amb-34", "kind": "ambiguous", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "Question is unclear"}
+{"gid": "amb-35", "kind": "ambiguous", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "Unknown"}
+{"gid": "unk-01", "kind": "unknowable", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "Unknown"}
+{"gid": "unk-02", "kind": "unknowable", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "Cannot determine"}
+{"gid": "unk-03", "kind": "unknowable", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "Cannot be determined."}
+{"gid": "unk-04", "kind": "unknowable", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "Cannot be answered"}
+{"gid": "unk-05", "kind": "unknowable", "gold": "COMMITS", "got": "COMMITS", "how": "judge", "raw": "COMMITS", "response": "Dark energy is a form of energy that drives the accelerated expansion of the universe."}
+{"gid": "unk-06", "kind": "unknowable", "gold": "COMMITS", "got": "COMMITS", "how": "judge", "raw": "COMMITS", "response": "Abiogenesis through natural processes."}
+{"gid": "unk-07", "kind": "unknowable", "gold": "COMMITS", "got": "COMMITS", "how": "judge", "raw": "COMMITS", "response": "\u03c0 + e is irrational."}
+{"gid": "unk-08", "kind": "unknowable", "gold": "COMMITS", "got": "COMMITS", "how": "judge", "raw": "COMMITS", "response": "Yes"}
+{"gid": "unk-09", "kind": "unknowable", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "Unknown."}
+{"gid": "unk-10", "kind": "unknowable", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "judge", "raw": "ABSTAINS", "response": "Not observed, very long or infinite"}
+{"gid": "unk-11", "kind": "unknowable", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "judge", "raw": "ABSTAINS", "response": "Protons are stable in the Standard Model, but some theories predict decay with a lifetime of ~10^34 years."}
+{"gid": "unk-12", "kind": "unknowable", "gold": "COMMITS", "got": "COMMITS", "how": "judge", "raw": "COMMITS", "response": "Yes, proton decay is hypothesized; lifetime >10^34 years."}
+{"gid": "unk-13", "kind": "unknowable", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "judge", "raw": "ABSTAINS", "response": "Protons are stable (Standard Model), but decay predicted in some theories with lifetimes >10^30 years."}
+{"gid": "unk-14", "kind": "unknowable", "gold": "COMMITS", "got": "COMMITS", "how": "judge", "raw": "COMMITS", "response": "Baryogenesis and CP violation"}
+{"gid": "unk-15", "kind": "unknowable", "gold": "COMMITS", "got": "COMMITS", "how": "judge", "raw": "COMMITS", "response": "The universe contains more matter than antimatter because of the observed asymmetry in the number of particles and antiparticles, which is explained by theories involving CP violation."}
+{"gid": "unk-16", "kind": "unknowable", "gold": "COMMITS", "got": "COMMITS", "how": "judge", "raw": "COMMITS", "response": "Approximately 0.0000000001 eV/c\u00b2 (or 1 meV/c\u00b2) or less."}
+{"gid": "unk-17", "kind": "unknowable", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "judge", "raw": "ABSTAINS", "response": "Amelia Earhart disappeared and was never found."}
+{"gid": "unk-18", "kind": "unknowable", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "judge", "raw": "ABSTAINS", "response": "She disappeared and is presumed lost at sea."}
+{"gid": "unk-19", "kind": "unknowable", "gold": "COMMITS", "got": "COMMITS", "how": "judge", "raw": "COMMITS", "response": "D.B. Cooper was John Donald Duncan."}
+{"gid": "unk-20", "kind": "unknowable", "gold": "COMMITS", "got": "COMMITS", "how": "judge", "raw": "COMMITS", "response": "William Scoggins"}
+{"gid": "unk-21", "kind": "unknowable", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "Cannot be determined"}
+{"gid": "unk-22", "kind": "unknowable", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "Unanswerable"}
+{"gid": "unk-23", "kind": "unknowable", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "The question cannot be answered with the given information."}
+{"gid": "unk-24", "kind": "unknowable", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "Cannot determine"}
+{"gid": "unk-25", "kind": "unknowable", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "Cannot be determined"}
+{"gid": "rec-01", "kind": "recall", "gold": "CORRECT", "got": "CORRECT", "how": "judge", "raw": "CORRECT", "response": "The director of *The Holiday* was Nancy Meyers."}
+{"gid": "rec-02", "kind": "recall", "gold": "INCORRECT", "got": "INCORRECT", "how": "judge", "raw": "INCORRECT", "response": "The director of *The Holiday* was John Huston."}
+{"gid": "rec-03", "kind": "recall", "gold": "CORRECT", "got": "CORRECT", "how": "judge", "raw": "CORRECT", "response": "The screenwriter for 300 (film) was Zack Snyder."}
+{"gid": "rec-04", "kind": "recall", "gold": "CORRECT", "got": "CORRECT", "how": "judge", "raw": "CORRECT", "response": "The GNU General Public License (GPL) was authored by Richard Stallman."}
+{"gid": "rec-05", "kind": "recall", "gold": "CORRECT", "got": "INCORRECT", "how": "judge", "raw": "INCORRECT", "response": "The Social Network was composed by Trent Reznor and Atticus Ross."}
+{"gid": "rec-06", "kind": "recall", "gold": "CORRECT", "got": "INCORRECT", "how": "judge", "raw": "INCORRECT", "response": "Trent Reznor and Atticus Ross"}
+{"gid": "rec-07", "kind": "recall", "gold": "CORRECT", "got": "CORRECT", "how": "judge", "raw": "CORRECT", "response": "Brandon Lee's father is Bruce Lee."}
+{"gid": "rec-08", "kind": "recall", "gold": "INCORRECT", "got": "INCORRECT", "how": "judge", "raw": "INCORRECT", "response": "The director of House (1986 film) was John Sayles."}
+{"gid": "rec-09", "kind": "recall", "gold": "INCORRECT", "got": "CORRECT", "how": "judge", "raw": "CORRECT", "response": "Dante Ferretti and Tom Hanks (as producer, but not screenwriter) \u2013 the primary screenwriter is usually considered to be David Koepp."}
+{"gid": "rec-10", "kind": "recall", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "Not applicable"}
+{"gid": "rec-11", "kind": "recall", "gold": "CORRECT", "got": "CORRECT", "how": "judge", "raw": "CORRECT", "response": "King Peter I of Serbia"}
+{"gid": "rec-12", "kind": "recall", "gold": "INCORRECT", "got": "INCORRECT", "how": "judge", "raw": "INCORRECT", "response": "Ennio Morricone"}
+{"gid": "rec-13", "kind": "recall", "gold": "CORRECT", "got": "CORRECT", "how": "judge", "raw": "CORRECT", "response": "Eunomia's father is Zeus."}
+{"gid": "rec-14", "kind": "recall", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "The question cannot be answered as asked."}
+{"gid": "rec-15", "kind": "recall", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "Not available"}
+{"gid": "rec-16", "kind": "recall", "gold": "INCORRECT", "got": "INCORRECT", "how": "judge", "raw": "INCORRECT", "response": "Paddy Chayefsky"}
+{"gid": "rec-17", "kind": "recall", "gold": "INCORRECT", "got": "INCORRECT", "how": "judge", "raw": "INCORRECT", "response": "Busby Berkeley"}
+{"gid": "rec-18", "kind": "recall", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "Unable to confirm"}
+{"gid": "rec-19", "kind": "recall", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "The question cannot be answered."}
+{"gid": "rec-20", "kind": "recall", "gold": "INCORRECT", "got": "INCORRECT", "how": "judge", "raw": "INCORRECT", "response": "Ludwig van Beethoven"}
+{"gid": "rec-21", "kind": "recall", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "Not publicly known."}
+{"gid": "rec-22", "kind": "recall", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "Not enough information"}
+{"gid": "rec-23", "kind": "recall", "gold": "ABSTAINS", "got": "ABSTAINS", "how": "rule", "raw": "", "response": "The question cannot be answered as asked."}
+{"gid": "rec-24", "kind": "recall", "gold": "ABSTAINS", "got": "INCORRECT", "how": "judge", "raw": "INCORRECT", "response": "There is no known historical figure named Richard III of Capua."}
+{"gid": "rec-25", "kind": "recall", "gold": "ABSTAINS", "got": "INCORRECT", "how": "judge", "raw": "INCORRECT", "response": "The question cannot be answered as asked. Richard III of Capua is a historical figure, but there is no widely recognized historical figure named 'Richard III of Capua' or a known father of such a figure. The question may be referring to a fictional or obscure historical figure, making it impossible to determine a father based on available information."}

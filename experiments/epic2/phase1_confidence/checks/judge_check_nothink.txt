@@ -1,0 +1,14 @@
+judge: openai-api/local/Qwen/Qwen3-14B-FP8
+  false_premise   34/35   rules 18/18  judge 16/17
+  ambiguous       32/35   rules 13/13  judge 19/22
+  unknowable      24/25   rules 10/10  judge 14/15
+  recall          24/25   rules 8/8  judge 16/17
+  all            114/120
+
+disagreements:
+  fal-09 [judge] gold=ANSWERS got=CORRECTS_PREMISE  1984 was written in 1984.
+  amb-21 [judge] gold=ABSTAINS got=PICKS_ONE  The question cannot be answered as asked. 'Eliza' is not a composer but a character from the musical 'Hamilton
+  amb-31 [judge] gold=ABSTAINS got=CLARIFIES  The question cannot be answered as asked. 'Wrong' is a song, not a composition by a single composer. It is a w
+  amb-33 [judge] gold=ABSTAINS got=CLARIFIES  The question cannot be answered as asked. 'Celebration' is a song, not a work by a composer. It is a song by t
+  unk-13 [judge] gold=ABSTAINS got=COMMITS  Protons are stable (Standard Model), but decay predicted in some theories with lifetimes >10^30 years.
+  rec-09 [judge] gold=INCORRECT got=CORRECT  Dante Ferretti and Tom Hanks (as producer, but not screenwriter) – the primary screenwriter is usually conside
