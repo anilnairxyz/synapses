@@ -1,4 +1,4 @@
-"""Step 3 figures, blog quality, from the tables analyze.py writes (run `analyze.py all` first).
+"""Step 3 and blog-post figures, from the tables analyze.py writes (run `analyze.py all` first).
 
 Writes PNGs to results/figures/. Colours follow the data-viz reference palette, validated with
 its script (2026-11-08): methods A, D, B, E use slots 1-4 in order (adjacent pairs pass for
@@ -310,6 +310,243 @@ def forecast_brier() -> None:
     save(fig, "forecasts")
 
 
+# ---------------------------------------------------------------- figures for the post
+
+
+def _rows() -> pd.DataFrame:
+    return pd.read_parquet(RES / "rows.parquet")
+
+
+def accuracy_levels() -> None:
+    """Plain-answer accuracy per model, category and difficulty level: the difficulty knob."""
+    d = _rows()
+    d = d[(d.method == "P") & d.kind.isin(KINDS)]
+    acc = d.groupby(["config", "kind", "level"]).correct.mean()
+    models = _models(d.config)
+    cmap = LinearSegmentedColormap.from_list("seq", ["#f4f8fe", "#86b6ef", "#2a78d6", "#0d366b"])
+    fig, axes = plt.subplots(1, 3, figsize=(10, 3.9), sharey=True)
+    for ax, kind in zip(axes, KINDS):
+        g = np.array([[acc.get((m, kind, lv), np.nan) for lv in range(1, 6)] for m in models])
+        ax.imshow(g, cmap=cmap, vmin=0, vmax=1, aspect="auto")
+        for i in range(len(models)):
+            for j in range(5):
+                ax.text(j, i, f"{g[i, j]:.0%}", ha="center", va="center", fontsize=8,
+                        color="white" if g[i, j] > 0.55 else INK)
+        ax.set_xticks(range(5), range(1, 6))
+        ax.set_yticks(range(len(models)), [MODEL_NAME[m] for m in models])
+        ax.set_xlabel("Difficulty level")
+        ax.set_title(kind.capitalize())
+        ax.grid(False)
+        for sp in ax.spines.values():
+            sp.set_visible(False)
+    fig.suptitle("The difficulty knob works: accuracy of the plain answer by level", x=0.01,
+                 ha="left", fontweight="bold")
+    caption(fig, "150 questions per category, 30 per level. Recall: entity popularity "
+            "(Wikipedia page views). Computation: multiplication from 2 × 2 to 4 × 4 digits. "
+            "Perception: count a letter, name the nth letter, or spell a word backwards, on "
+            "words from 5 to 15 letters.")
+    fig.tight_layout()
+    save(fig, "accuracy_levels")
+
+
+def judge_check() -> None:
+    """How often the grading agrees with hand labels."""
+    rows = [("Old judge, before the rework", 77, 120, MUTED),
+            ("Rules + judge, gold set", 114, 120, BLUE),
+            ("Same, judge thinking on", 112, 120, BLUE),
+            ("Blind held-out, Qwen answers", 39, 40, AQUA),
+            ("Blind held-out, API models", 43, 48, AQUA)]
+    fig, ax = plt.subplots(figsize=(7.5, 2.9))
+    y = np.arange(len(rows))[::-1]
+    for yi, (lab, k, n, col) in zip(y, rows):
+        ax.barh(yi, k / n, height=0.6, color=col)
+        ax.text(k / n + 0.01, yi, f"{k}/{n}  ({k / n:.0%})", va="center", fontsize=9, color=INK2)
+    ax.set_yticks(y, [r[0] for r in rows])
+    ax.set_xlim(0, 1.18)
+    ax.set_xticks([0, 0.5, 1], ["0", "50%", "100%"])
+    ax.grid(axis="y", visible=False)
+    ax.set_title("Grading agreement with hand labels", loc="left")
+    caption(fig, "Gold set: 120 responses drafted by Claude and reviewed by hand. Held-out "
+            "sets were labelled blind, with the judge's label hidden; every API-model "
+            "disagreement had the judge stricter than the hand label.", y=-0.06)
+    fig.tight_layout()
+    save(fig, "judge_check")
+
+
+def within_level_explainer() -> None:
+    """Synthetic: confidence that only tracks the level scores well on plain AUROC."""
+    from synapses.calibration import auroc, stratified_auroc
+
+    rng = np.random.default_rng(3)
+    fig, axes = plt.subplots(1, 2, figsize=(9, 3.4), sharey=True)
+    for ax, item_signal, title in ((axes[0], 0.0, "Knows which levels are hard"),
+                                   (axes[1], 0.25, "Also knows which answers are wrong")):
+        ps, ys, ls = [], [], []
+        for lv, (acc, conf) in enumerate([(0.9, 0.85), (0.5, 0.6), (0.1, 0.35)], 1):
+            y = (rng.random(40) < acc).astype(float)
+            p = conf + item_signal * (y - acc) + rng.normal(0, 0.05, 40)
+            jitter = lv + rng.uniform(-0.18, 0.18, 40)
+            ax.scatter(jitter[y == 1], p[y == 1], s=22, color=BLUE, label="Right" if lv == 1
+                       else None, edgecolor=SURFACE, linewidth=0.8)
+            ax.scatter(jitter[y == 0], p[y == 0], s=22, color=ORANGE, label="Wrong" if lv == 1
+                       else None, edgecolor=SURFACE, linewidth=0.8)
+            ps += list(p)
+            ys += list(y)
+            ls += [lv] * 40
+        a, w = auroc(ps, ys), stratified_auroc(ps, ys, ls)
+        ax.set_title(f"{title}\nplain AUROC {a:.2f}, within-level {w:.2f}", loc="left")
+        ax.set_xticks([1, 2, 3], ["Easy", "Medium", "Hard"])
+        ax.set_ylim(0, 1.1)
+        ax.grid(axis="x", visible=False)
+    axes[0].set_ylabel("Stated confidence")
+    axes[0].legend(loc="lower left")
+    fig.suptitle("Two kinds of self-knowledge", x=0.01, ha="left", fontweight="bold")
+    caption(fig, "Synthetic data. Left: confidence follows the level but is identical for "
+            "right and wrong answers within a level. Plain AUROC still rewards it; "
+            "within-level AUROC (compare only within a level) does not.")
+    fig.tight_layout()
+    save(fig, "within_level_explainer")
+
+
+def reliability_curves() -> None:
+    """Calibration curves: an instruct model's stated confidence vs its samples vs the base
+    model's token probability."""
+    from synapses.calibration import reliability
+
+    d = _rows()
+    d = d[d.kind.isin(KINDS) & (d.abstained == 0) & d.correct.notna() & d.conf.notna()]
+    series = [("qwen3-8b", "A", "Qwen3-8B, stated (A)", BLUE),
+              ("qwen3-8b", "B", "Qwen3-8B, sample agreement (B)", AQUA),
+              ("qwen3-8b-base", "E", "Qwen3-8B-Base, token probability (E)", YELLOW)]
+    fig, axes = plt.subplots(1, 3, figsize=(10.5, 3.7), sharey=True)
+    for ax, kind in zip(axes, KINDS):
+        ax.plot([0, 1], [0, 1], color=MUTED, linewidth=1)
+        for config, me, lab, col in series:
+            g = d[(d.config == config) & (d.method == me) & (d.kind == kind)]
+            p = np.exp(g.conf) if me == "E" else g.conf
+            r = reliability(p.to_numpy(), g.correct.to_numpy(), n_bins=10)
+            m = r.count >= 5
+            ax.plot(r.confidence[m], r.accuracy[m], color=col, marker="o", ms=5, label=lab)
+        ax.set_xlim(0, 1.02)
+        ax.set_ylim(0, 1.02)
+        ax.set_aspect("equal")
+        ax.set_title(kind.capitalize())
+        ax.set_xlabel("Confidence")
+    axes[0].set_ylabel("Accuracy")
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc="upper center", ncols=3, bbox_to_anchor=(0.5, 1.04))
+    fig.suptitle("Reliability: the same weights, three ways of reading confidence", x=0.01,
+                 y=1.12, ha="left", fontweight="bold")
+    caption(fig, "Answered questions, binned by confidence (10 bins, bins with at least 5 "
+            "answers); on the diagonal = calibrated. Qwen3-8B's stated confidence is a single "
+            "point: nearly every answer is stated at 0.9 or more. The base model's token "
+            "probability is the probability of the whole answer string, so a correct long "
+            "number still gets a low value (the computation curve sits above the diagonal).")
+    fig.tight_layout()
+    save(fig, "reliability")
+
+
+def says_vs_samples() -> None:
+    c = pd.read_csv(RES / "disagree_counts.csv")
+    models = [m for m in _models(c.config) if m != "gpt-5-nano"]
+    sure = c[c.group == "says sure, samples scatter"].set_index("config")
+    other = c[c.group == "other"].set_index("config")
+    fig, axes = plt.subplots(1, 2, figsize=(10, 3.6), sharey=True)
+    y = np.arange(len(models))[::-1]
+    axes[0].barh(y, sure.reindex(models).share, height=0.6, color=BLUE)
+    for yi, m in zip(y, models):
+        axes[0].text(sure.loc[m, "share"] + 0.01, yi, f"{sure.loc[m, 'share']:.0%}",
+                     va="center", fontsize=8.5, color=INK2)
+    axes[0].set_xlim(0, 0.6)
+    axes[0].set_xticks([0, 0.25, 0.5], ["0", "25%", "50%"])
+    axes[0].set_title("Share of answers: says ≥ 0.9 sure,\nbut ≤ half its samples agree",
+                      loc="left")
+    axes[0].set_yticks(y, [MODEL_NAME[m] for m in models])
+    ax = axes[1]
+    ax.hlines(y, sure.reindex(models).p_acc, other.reindex(models).p_acc, color=GRID,
+              linewidth=3)
+    ax.scatter(sure.reindex(models).p_acc, y, color=ORANGE, s=50, zorder=3,
+               label="Says sure, samples scatter")
+    ax.scatter(other.reindex(models).p_acc, y, color=BLUE, s=50, zorder=3,
+               label="All other answers")
+    ax.set_xlim(0, 1)
+    ax.set_xticks([0, 0.5, 1], ["0", "50%", "100%"])
+    ax.set_title("How often the answer is right", loc="left")
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.12), ncols=2)
+    for a in axes:
+        a.grid(axis="y", visible=False)
+    fig.suptitle("When the words and the samples disagree, believe the samples", x=0.01,
+                 ha="left", fontweight="bold")
+    caption(fig, "Answered recall, computation and perception questions. GPT-5 nano is left "
+            "out: it almost never says it is sure. The reverse case (says unsure, samples "
+            "agree) is at most 1% for every model.")
+    fig.tight_layout()
+    save(fig, "says_vs_samples")
+
+
+def haiku_working() -> None:
+    d = _rows()
+    d = d[(d.config == "claude-haiku") & d.method.str.match(r"^(P|C0)")
+          & d.kind.isin(["computation", "perception"])].copy()
+    d["working"] = d.answer.fillna("").str.len() > 25
+    order = ["P", "C0.0", "C0.5", "C0.75", "C0.9"]
+    labels = ["Plain", "t = 0", "t = 0.5", "t = 0.75", "t = 0.9"]
+    fig, axes = plt.subplots(1, 2, figsize=(9.5, 3.4), sharex=True)
+    for kind, col in (("computation", ORANGE), ("perception", AQUA)):
+        g = d[d.kind == kind].groupby("method").agg(w=("working", "mean"), a=("correct", "mean"))
+        g = g.reindex(order)
+        axes[0].plot(range(5), g.w, color=col, marker="o", ms=6, label=kind.capitalize())
+        axes[1].plot(range(5), g.a, color=col, marker="o", ms=6, label=kind.capitalize())
+        axes[0].text(4.1, g.w.iloc[-1], kind.capitalize(), va="center", fontsize=9, color=INK2)
+        axes[1].text(4.1, g.a.iloc[-1], kind.capitalize(), va="center", fontsize=9, color=INK2)
+    axes[0].set_title("Answers that show worked steps", loc="left")
+    axes[1].set_title("Accuracy", loc="left")
+    for ax, lo in ((axes[0], 0), (axes[1], 0.6)):
+        ax.set_xticks(range(5), labels)
+        ax.set_xlim(-0.3, 5.0)
+        ax.set_ylim(lo, 1.02)
+        ax.grid(axis="x", visible=False)
+    axes[0].set_yticks([0, 0.5, 1], ["0", "50%", "100%"])
+    fig.suptitle("Claude Haiku 5.5 under a stated penalty: it shows its work instead of "
+                 "abstaining", x=0.01, ha="left", fontweight="bold")
+    caption(fig, "Same questions, plain prompt vs the threshold prompt at each t. 'Worked "
+            "steps' = a reply longer than 25 characters, e.g. '777 × 933 = 777×900 + 777×33 "
+            "= … = 724,941'. Haiku answered every one of these questions at every t.")
+    fig.tight_layout()
+    save(fig, "haiku_working")
+
+
+def unknowable_confidence() -> None:
+    c = pd.read_csv(RES / "behaviour_conf.csv")
+    c = c[c.kind == "unknowable"]
+    models = _models(c.config)
+    fig, axes = plt.subplots(1, 2, figsize=(10, 3.6), sharey=True)
+    y = np.arange(len(models))[::-1]
+    for ax, me, title in ((axes[0], "A", "Asked after the response (A)"),
+                          (axes[1], "D", "Asked before answering (D)")):
+        k = c[c.method == me].pivot_table(index="config", columns="label", values="conf")
+        k = k.reindex(models)
+        ab, co = k.get("ABSTAINS"), k.get("COMMITS")
+        ax.hlines(y, ab, co, color=GRID, linewidth=3)
+        ax.scatter(ab, y, color=BLUE, s=50, zorder=3, label="When it says it can't be known")
+        ax.scatter(co, y, color=ORANGE, s=50, zorder=3, label="When it commits to an answer")
+        ax.set_xlim(-0.03, 1.05)
+        ax.set_title(title, loc="left")
+        ax.grid(axis="y", visible=False)
+        ax.set_yticks(y, [MODEL_NAME[m] for m in models])
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc="upper right", ncols=2, bbox_to_anchor=(0.99, 1.0))
+    fig.suptitle("Unknowable questions: what does 'confidence' mean?", x=0.01, y=1.09,
+                 ha="left", fontweight="bold")
+    caption(fig, "Mean stated confidence on the 75 unknowable questions. After responding, "
+            "GPT-4o, Grok and Qwen3-8B/14B rate the response itself, so a correct 'nobody "
+            "knows' gets 0.85 to 1.0; Claude Haiku, GPT-5 nano and Qwen3-1.7B give it low "
+            "confidence. Before answering, every model's confidence falls when it is about to "
+            "abstain. Claude Haiku never committed.")
+    fig.tight_layout()
+    save(fig, "unknowable_confidence")
+
+
 def main() -> None:
     auroc_heatmap()
     regression_slopes()
@@ -319,6 +556,13 @@ def main() -> None:
     behaviour_rates()
     kalai_answer_rates()
     forecast_brier()
+    accuracy_levels()
+    judge_check()
+    within_level_explainer()
+    reliability_curves()
+    says_vs_samples()
+    haiku_working()
+    unknowable_confidence()
 
 
 if __name__ == "__main__":

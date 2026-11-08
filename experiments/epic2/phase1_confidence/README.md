@@ -14,6 +14,7 @@ Plan: [`docs/epic2_phase1_plan_03-11-2026.md`](../../../docs/epic2_phase1_plan_0
 - `analyze.py`: Step 3, analysis of the judged full-run logs (no model calls). `load()` builds one row per (config, question, method), cached in `results/rows.parquet` (not committed; `--refresh` rebuilds it). Commands: `check`, `discrimination`, `difficulty`, `hard-easy`, `methods`, `behaviour`, `forecasts`, or `all` (every table, about 3 minutes). Its docstring defines every method row and analysis. Tests in `tests/test_phase1_analyze.py`.
 - `plots.py`: Step 3 figures (blog quality) from the tables, into `results/figures/`.
 - `results/`: tables, figures and the Step 3 findings summary ([`results/README.md`](results/README.md)).
+- [`RESULTS.md`](RESULTS.md): Step 6 close-out (findings, caveats, go/no-go). Blog post: lifeandtimes `docs/blog/posts/2026-11-08-inside-a-confidence-audit.md` (figures copied there as `docs/blog/images/confidence_*.png`).
 - Metrics live in `src/synapses/calibration.py` (tested in `tests/test_calibration.py`); task tests in `tests/test_phase1_task.py`.
 
 ## Running
