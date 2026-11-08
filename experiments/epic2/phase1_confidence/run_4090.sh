@@ -5,6 +5,9 @@
 #   experiments/epic2/phase1_confidence/run_4090.sh pilot            # 10 questions per category
 #   experiments/epic2/phase1_confidence/run_4090.sh full             # whole question set
 #   experiments/epic2/phase1_confidence/run_4090.sh pilot qwen3-8b   # only the named configs
+#   experiments/epic2/phase1_confidence/run_4090.sh train            # Phase 1B probe training set:
+#       plain answer (P) only, on train_questions.jsonl, for the Phase 1B configs
+#       (qwen3-8b, qwen3-1.7b, qwen3-8b-base); judge afterwards with judge_4090.sh 4090/train
 #
 # Logs: experiments/epic2/phase1_confidence/runs/4090/<mode>/<config>/ (Inspect .eval files; committed so the Mac can analyse them);
 #       vLLM server output in logs/vllm_<config>.log.
@@ -20,7 +23,9 @@ TASK=$HERE/confidence_task.py
 case $MODE in
   pilot) LIMIT="-T per_category=10" ;;
   full) LIMIT="" ;;
-  *) echo "mode must be pilot or full"; exit 1 ;;
+  train) LIMIT="-T methods=p -T questions=data/epic2/confidence/train_questions.jsonl"
+         [ $# -gt 0 ] || set -- qwen3-8b qwen3-1.7b qwen3-8b-base ;;
+  *) echo "mode must be pilot, full or train"; exit 1 ;;
 esac
 
 # config | served model | vLLM args | task args
