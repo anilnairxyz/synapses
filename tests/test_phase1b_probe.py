@@ -78,3 +78,15 @@ def test_oof_scores_every_training_question(fake):
     g = oof[(oof.probe == "logreg") & (oof.position == "gen") & (oof.train_kind == "pooled")]
     assert len(g) == 450 and auroc(g.score, g.y) > 0.85
     assert oof[oof.probe == "meta"].groupby("train_kind").size().eq(150).all()
+
+
+def test_paired_difference_has_the_right_sign():
+    import analyze_probes as ap
+    rng = np.random.default_rng(0)
+    y = rng.integers(0, 2, 400)
+    strata = rng.integers(1, 4, 400).astype(str)
+    good, noise = y + rng.normal(0, 0.5, 400), rng.normal(0, 1, 400)
+    est, lo, hi = ap.diff_with_ci(good, noise, y, strata, ap.boot_idx(400)[:200])
+    assert est > 0.3 and lo > 0
+    est, lo, hi = ap.within_with_ci(noise, y, strata, ap.boot_idx(400)[:200])
+    assert lo < 0.5 < hi

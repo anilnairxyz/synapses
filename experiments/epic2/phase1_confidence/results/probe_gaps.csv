@@ -1,0 +1,97 @@
+config,kind,comparison,strata,diff,lo,hi
+qwen3-1.7b,computation,after - before,level,0.0664,0.0392,0.0973
+qwen3-1.7b,computation,ans_mean - q_last,level,0.0767,0.0527,0.1021
+qwen3-1.7b,computation,before - meta,level,0.0320,0.0030,0.0606
+qwen3-1.7b,computation,after - meta,level,0.0984,0.0652,0.1299
+qwen3-1.7b,computation,after - before,strict,0.0664,0.0392,0.0973
+qwen3-1.7b,computation,ans_mean - q_last,strict,0.0767,0.0527,0.1021
+qwen3-1.7b,computation,before - meta,strict,0.0320,0.0030,0.0606
+qwen3-1.7b,computation,after - meta,strict,0.0984,0.0652,0.1299
+qwen3-1.7b,perception,after - before,level,0.0378,0.0201,0.0557
+qwen3-1.7b,perception,ans_mean - q_last,level,0.0578,0.0409,0.0750
+qwen3-1.7b,perception,before - meta,level,0.0407,0.0250,0.0575
+qwen3-1.7b,perception,after - meta,level,0.0785,0.0578,0.1006
+qwen3-1.7b,perception,after - before,strict,0.0902,0.0498,0.1317
+qwen3-1.7b,perception,ans_mean - q_last,strict,0.1340,0.0960,0.1737
+qwen3-1.7b,perception,before - meta,strict,0.1143,0.0715,0.1583
+qwen3-1.7b,perception,after - meta,strict,0.2046,0.1601,0.2485
+qwen3-1.7b,recall,after - before,level,0.0502,0.0111,0.0859
+qwen3-1.7b,recall,ans_mean - q_last,level,0.0405,0.0149,0.0708
+qwen3-1.7b,recall,before - meta,level,0.1813,0.1260,0.2455
+qwen3-1.7b,recall,after - meta,level,0.2315,0.1802,0.2850
+qwen3-1.7b,recall,after - before,strict,0.0770,0.0263,0.1306
+qwen3-1.7b,recall,ans_mean - q_last,strict,0.0730,0.0382,0.1160
+qwen3-1.7b,recall,before - meta,strict,0.3433,0.2566,0.4350
+qwen3-1.7b,recall,after - meta,strict,0.4203,0.3370,0.5034
+qwen3-8b,computation,after - before,level,0.1713,0.1385,0.2032
+qwen3-8b,computation,ans_mean - q_last,level,0.2044,0.1692,0.2411
+qwen3-8b,computation,before - meta,level,0.0391,0.0050,0.0753
+qwen3-8b,computation,after - meta,level,0.2104,0.1746,0.2492
+qwen3-8b,computation,after - before,strict,0.1713,0.1385,0.2032
+qwen3-8b,computation,ans_mean - q_last,strict,0.2044,0.1692,0.2411
+qwen3-8b,computation,before - meta,strict,0.0391,0.0050,0.0753
+qwen3-8b,computation,after - meta,strict,0.2104,0.1746,0.2492
+qwen3-8b,perception,after - before,level,0.0975,0.0721,0.1250
+qwen3-8b,perception,ans_mean - q_last,level,0.0845,0.0520,0.1175
+qwen3-8b,perception,before - meta,level,0.1214,0.0873,0.1552
+qwen3-8b,perception,after - meta,level,0.2189,0.1850,0.2541
+qwen3-8b,perception,after - before,strict,0.1165,0.0802,0.1501
+qwen3-8b,perception,ans_mean - q_last,strict,0.0814,0.0410,0.1232
+qwen3-8b,perception,before - meta,strict,0.0681,0.0248,0.1076
+qwen3-8b,perception,after - meta,strict,0.1846,0.1379,0.2273
+qwen3-8b,recall,after - before,level,0.0684,0.0445,0.0920
+qwen3-8b,recall,ans_mean - q_last,level,0.0750,0.0520,0.0994
+qwen3-8b,recall,before - meta,level,0.1798,0.1441,0.2161
+qwen3-8b,recall,after - meta,level,0.2482,0.2087,0.2879
+qwen3-8b,recall,after - before,strict,0.0907,0.0614,0.1210
+qwen3-8b,recall,ans_mean - q_last,strict,0.0908,0.0610,0.1224
+qwen3-8b,recall,before - meta,strict,0.2226,0.1775,0.2720
+qwen3-8b,recall,after - meta,strict,0.3134,0.2652,0.3594
+qwen3-8b-base,computation,after - before,level,0.1231,0.0915,0.1555
+qwen3-8b-base,computation,ans_mean - q_last,level,0.1029,0.0733,0.1339
+qwen3-8b-base,computation,before - meta,level,0.0652,0.0345,0.0961
+qwen3-8b-base,computation,after - meta,level,0.1883,0.1506,0.2301
+qwen3-8b-base,computation,after - before,strict,0.1231,0.0915,0.1555
+qwen3-8b-base,computation,ans_mean - q_last,strict,0.1029,0.0733,0.1339
+qwen3-8b-base,computation,before - meta,strict,0.0652,0.0345,0.0961
+qwen3-8b-base,computation,after - meta,strict,0.1883,0.1506,0.2301
+qwen3-8b-base,perception,after - before,level,0.0557,0.0393,0.0714
+qwen3-8b-base,perception,ans_mean - q_last,level,0.0510,0.0322,0.0706
+qwen3-8b-base,perception,before - meta,level,0.0386,0.0227,0.0563
+qwen3-8b-base,perception,after - meta,level,0.0942,0.0753,0.1145
+qwen3-8b-base,perception,after - before,strict,0.1154,0.0843,0.1486
+qwen3-8b-base,perception,ans_mean - q_last,strict,0.1153,0.0836,0.1477
+qwen3-8b-base,perception,before - meta,strict,0.0845,0.0502,0.1222
+qwen3-8b-base,perception,after - meta,strict,0.1999,0.1638,0.2370
+qwen3-8b-base,recall,after - before,level,0.0259,0.0092,0.0441
+qwen3-8b-base,recall,ans_mean - q_last,level,0.0747,0.0557,0.0953
+qwen3-8b-base,recall,before - meta,level,0.1750,0.1403,0.2073
+qwen3-8b-base,recall,after - meta,level,0.2008,0.1658,0.2343
+qwen3-8b-base,recall,after - before,strict,0.0365,0.0151,0.0592
+qwen3-8b-base,recall,ans_mean - q_last,strict,0.0868,0.0637,0.1116
+qwen3-8b-base,recall,before - meta,strict,0.2104,0.1651,0.2495
+qwen3-8b-base,recall,after - meta,strict,0.2469,0.2027,0.2840
+base - instruct,recall,q_last: base - instruct,level,-0.0233,-0.0551,0.0082
+base - instruct,recall,gen: base - instruct,level,0.0036,-0.0279,0.0341
+base - instruct,recall,ans_last: base - instruct,level,-0.0390,-0.0642,-0.0129
+base - instruct,recall,ans_mean: base - instruct,level,-0.0237,-0.0488,0.0010
+base - instruct,recall,q_last: base - instruct,strict,-0.0208,-0.0574,0.0171
+base - instruct,recall,gen: base - instruct,strict,0.0026,-0.0333,0.0402
+base - instruct,recall,ans_last: base - instruct,strict,-0.0517,-0.0819,-0.0223
+base - instruct,recall,ans_mean: base - instruct,strict,-0.0248,-0.0556,0.0037
+base - instruct,computation,q_last: base - instruct,level,0.0773,0.0287,0.1262
+base - instruct,computation,gen: base - instruct,level,0.0611,0.0159,0.1071
+base - instruct,computation,ans_last: base - instruct,level,0.0129,-0.0178,0.0418
+base - instruct,computation,ans_mean: base - instruct,level,-0.0242,-0.0524,0.0058
+base - instruct,computation,q_last: base - instruct,strict,0.0773,0.0287,0.1262
+base - instruct,computation,gen: base - instruct,strict,0.0611,0.0159,0.1071
+base - instruct,computation,ans_last: base - instruct,strict,0.0129,-0.0178,0.0418
+base - instruct,computation,ans_mean: base - instruct,strict,-0.0242,-0.0524,0.0058
+base - instruct,perception,q_last: base - instruct,level,0.0917,0.0548,0.1294
+base - instruct,perception,gen: base - instruct,level,0.0520,0.0183,0.0900
+base - instruct,perception,ans_last: base - instruct,level,0.0101,-0.0205,0.0431
+base - instruct,perception,ans_mean: base - instruct,level,0.0582,0.0244,0.0949
+base - instruct,perception,q_last: base - instruct,strict,0.0008,-0.0494,0.0471
+base - instruct,perception,gen: base - instruct,strict,-0.0168,-0.0636,0.0310
+base - instruct,perception,ans_last: base - instruct,strict,-0.0179,-0.0578,0.0226
+base - instruct,perception,ans_mean: base - instruct,strict,0.0347,-0.0085,0.0833
