@@ -201,6 +201,10 @@ def load_questions(path: str | None, categories: str | None, per_category: int |
                    base: bool) -> MemoryDataset:
     p = Path(path) if path else (REPO_QUESTIONS if REPO_QUESTIONS.exists()
                                  else HERE / "questions.jsonl")
+    # Inspect runs a task from its own folder, so a relative path given on the command line
+    # (from the repo root) is resolved against the repo root.
+    if path and not p.is_absolute() and not p.exists():
+        p = HERE.parents[2] / p
     rows = [json.loads(line) for line in p.read_text().splitlines() if line.strip()]
     want = set(categories.split(",")) if categories else None
     by_cat: dict[str, list[dict]] = {}
