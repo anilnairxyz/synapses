@@ -22,6 +22,13 @@ else
   GRADER="{model: openai-api/local/$JUDGE, extra_body: {chat_template_kwargs: {enable_thinking: false}}}"
 fi
 
+# inspect score builds a client for each log's original model even though only the grader is
+# called, so models not served here (Foundry, Claude) need some credentials set. Placeholders do:
+# a call with them would fail rather than spend anything.
+export FOUNDRY_API_KEY=${FOUNDRY_API_KEY:-unused-for-judging}
+export FOUNDRY_BASE_URL=${FOUNDRY_BASE_URL:-http://localhost:9/v1}
+export ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-unused-for-judging}
+
 if [ "${1:-}" != check ]; then
   mapfile -t LOGS < <(find "$HERE/runs/${1:-}" -name "*.eval" | sort)
   [ ${#LOGS[@]} -gt 0 ] || { echo "no .eval logs under $HERE/runs/${1:-}"; exit 1; }
