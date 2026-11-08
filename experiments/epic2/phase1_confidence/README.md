@@ -11,7 +11,7 @@ Plan: [`docs/epic2_phase1_plan_03-11-2026.md`](../../../docs/epic2_phase1_plan_0
 - `confidence_task.py`: Step 2. The Inspect task: every method on every question (calls P, B×k, A, D, C×4; forecastable F + FB×k), deterministic grading in the run, judge grading in a second pass. Its docstring lists the options.
 - `chat_template_raw.jinja`: pass-through chat template so base models can be served by vLLM and prompted few-shot.
 - `run_4090.sh`: the 4090 driver: per configuration, start vLLM, run the task, stop vLLM. Logs in `runs/4090/<mode>/<config>/`.
-- `analyze.py`: Step 3, still written for the old three-tier set; to be reworked with meta-d′.
+- `analyze.py`: Step 3, analysis of the judged full-run logs (no model calls). `load()` builds one row per (config, question, method), cached in `results/rows.parquet` (not committed; `--refresh` rebuilds it); `analyze.py check` prints figures to compare with the per-log scores. Its docstring defines every method row. Tests in `tests/test_phase1_analyze.py`.
 - Metrics live in `src/synapses/calibration.py` (tested in `tests/test_calibration.py`); task tests in `tests/test_phase1_task.py`.
 
 ## Running

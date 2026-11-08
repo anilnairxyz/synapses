@@ -1,177 +1,170 @@
-"""Step 3 (+4): metrics, tables and plots from Confidence Audit Inspect logs.
+"""Step 3: analysis of the judged Confidence Audit logs. No model calls.
 
-Reads every .eval log under --log-dir, one row per (run, question), then reports per run
-and tier: accuracy, abstention, Brier (+ Murphy decomposition), ECE and AUROC for verbal
-confidence, and for sample-consistency confidence when the run used k_samples > 0.
+Part 1 (this file so far): `load()` turns every full-run log under runs/<source>/full/<config>/
+into one tidy table, one row per (config, question, method), cached in results/rows.parquet.
+Everything else in Step 3 is computed from that table.
 
-Pool definitions:
-  attempted  parsed, not abstained, not judged a decline. These carry a confidence that is
-             scored against correctness. Unknowable-tier commitments count as incorrect.
-  all        every parsed sample; used for the Kalai penalised score, where abstaining is 0.
+Methods (rows), and which answer each row's `correct` refers to:
+  P        the plain answer (no confidence of its own; carries accuracy and abstention)
+  A, D     stated confidence after / before answering, scored on their own answer
+  B        agreement of the k samples with P's answer, scored on P's answer
+  E, E_mean, E_min
+           answer-token logprobs of P (sum = log P(whole answer), the main summary; mean and
+           min kept as robustness checks), scored on P's answer
+  C        implied confidence from the Kalai threshold calls: the number of thresholds
+           (t = 0, .5, .75, .9) at which the model still answers, 0 to 4, scored on the
+           t = 0 answer (the rule there says always answer)
+  C0.0 ... C0.9
+           each threshold call on its own, for answer / abstention rates
+  F, FB    forecastable items: the stated probability and the mean of the samples; `correct`
+           holds the outcome (0/1), so Brier etc. apply directly
 
-Usage:
-  uv run python experiments/epic2/phase1_confidence/analyze.py --log-dir outputs/epic2/confidence
+Columns: source, config, qid, category, kind, level, method, answer, label, correct (0/1/NaN),
+abstained (0/1/NaN), conf.
+  kind     computation, perception, recall, false_premise, ambiguous, unknowable, forecastable
+  label    the grader's label (CORRECT / INCORRECT / ABSTAINS / CORRECTS_PREMISE / ...);
+           ERROR / UNPARSED when the call failed or its reply couldn't be read
+  correct  1 if the label is the right answer or right behaviour for the kind, NaN if no label
+
+Usage (repo root):
+  uv run --extra evals python experiments/epic2/phase1_confidence/analyze.py check
 """
 
 from __future__ import annotations
 
 import argparse
+import glob
+import sys
 from pathlib import Path
 
-import matplotlib
-
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from inspect_ai.log import list_eval_logs, read_eval_log
+from inspect_ai.log import read_eval_log
 
-from synapses.calibration import auroc, brier, ece, murphy, penalised_score, reliability, selective_curve
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+import confidence_task as ct  # noqa: E402
 
-ROOT = Path(__file__).resolve().parents[3]
-SCORER = "confidence_scorer"
+RUNS = HERE / "runs"
+RESULTS = HERE / "results"
+ROWS = RESULTS / "rows.parquet"
+THRESHOLDS = ("0.0", "0.5", "0.75", "0.9")
 
 
-def load(log_dir: Path) -> pd.DataFrame:
+def _ok(kind: str, label: str | None) -> float:
+    if label is None or label in ct.NO_LABEL:
+        return np.nan
+    right = "CORRECT" if kind in ("computation", "perception", "recall") else ct.RIGHT[kind]
+    return float(label == right)
+
+
+def _abstained(label: str | None) -> float:
+    return np.nan if label is None or label in ct.NO_LABEL else float(label == "ABSTAINS")
+
+
+def sample_rows(source: str, config: str, s) -> list[dict]:
+    """The rows for one logged sample (question)."""
+    q = s.metadata["q"]
+    calls = s.metadata["calls"]
+    sc = s.scores["confidence_scorer"]
+    kind = ct.judge_kind(q) or q["category"]
+    base = {"source": source, "config": config, "qid": s.id, "category": q["category"],
+            "kind": kind, "level": q["level"]}
+
+    def row(method, answer=None, label=None, correct=np.nan, abstained=np.nan, conf=np.nan):
+        return base | {"method": method, "answer": answer, "label": label,
+                       "correct": correct, "abstained": abstained,
+                       "conf": np.nan if conf is None else float(conf)}
+
+    if q["category"] == "forecastable":
+        y = float(q["meta"]["outcome"])
+        fb = [p for p in sc.metadata.get("fb", []) if p is not None]
+        return [row("F", conf=calls["F"].get("confidence"), correct=y),
+                row("FB", conf=np.mean(fb) if fb else np.nan, correct=y)]
+
+    labels = sc.metadata["labels"]
     rows = []
-    latest: dict[str, object] = {}  # run name -> newest successful log (re-runs replace)
-    for info in list_eval_logs(str(log_dir)):
-        log = read_eval_log(info)
-        if log.status != "success" or not log.samples:
-            continue
-        args = log.eval.task_args or {}
-        run = f"{log.eval.model.split('/')[-1]}·{args.get('elicit', 'post')}·k{args.get('k_samples', 0)}"
-        if run not in latest or log.eval.created > latest[run].eval.created:
-            latest[run] = log
-    for run, log in latest.items():
-        args = log.eval.task_args or {}
+    lp, p_lab = calls["P"].get("lp") or {}, labels["P"]
+    p = dict(answer=calls["P"].get("answer"), label=p_lab, correct=_ok(kind, p_lab),
+             abstained=_abstained(p_lab))
+    rows.append(row("P", **p))
+    if "b_agree" in sc.value:
+        rows.append(row("B", **p, conf=sc.value["b_agree"]))
+    for m, key in (("E", "sum"), ("E_mean", "mean"), ("E_min", "min")):
+        if lp.get(key) is not None:
+            rows.append(row(m, **p, conf=lp[key]))
+    for m in ("A", "D"):
+        if m in calls:
+            lab = labels[m]
+            rows.append(row(m, answer=calls[m].get("answer"), label=lab, correct=_ok(kind, lab),
+                            abstained=_abstained(lab), conf=calls[m].get("confidence")))
+    if calls.get("C"):
+        answered = []
+        for t in THRESHOLDS:
+            lab = labels.get(f"C{t}")
+            ab = _abstained(lab)
+            answered.append(np.nan if np.isnan(ab) else 1 - ab)
+            rows.append(row(f"C{t}", answer=calls["C"][t].get("answer"), label=lab,
+                            correct=_ok(kind, lab), abstained=ab))
+        c0 = rows[-len(THRESHOLDS)]
+        implied = np.nan if any(np.isnan(answered)) else sum(answered)
+        rows.append(row("C", answer=c0["answer"], label=c0["label"], correct=c0["correct"],
+                        abstained=c0["abstained"], conf=implied))
+    return rows
+
+
+def load(refresh: bool = False) -> pd.DataFrame:
+    """The tidy table for every full run (cached; `refresh` re-reads the logs)."""
+    if ROWS.exists() and not refresh:
+        return pd.read_parquet(ROWS)
+    rows = []
+    for f in sorted(glob.glob(str(RUNS / "*/full/*/*.eval"))):
+        path = Path(f)
+        source, config = path.parents[2].name, path.parent.name
+        log = read_eval_log(f)
+        if log.status != "success":
+            raise SystemExit(f"{f}: status {log.status}")
         for s in log.samples:
-            sc = s.scores.get(SCORER) if s.scores else None
-            if sc is None:
-                continue
-            rows.append({
-                "run": run,
-                "model": log.eval.model,
-                "elicit": args.get("elicit", "post"),
-                "k": int(args.get("k_samples", 0) or 0),
-                "id": s.id,
-                "tier": sc.metadata["tier"],
-                "source": sc.metadata["source"],
-                "answer": sc.answer,
-                **sc.value,
-            })
-    if not rows:
-        raise SystemExit(f"no successful confidence_audit logs in {log_dir}")
+            sc = (s.scores or {}).get("confidence_scorer")
+            if sc is None or not sc.metadata.get("judged", True) and sc.value.get("ungraded"):
+                raise SystemExit(f"{f}: {s.id} not judged; run judge_4090.sh first")
+            rows += sample_rows(source, config, s)
     df = pd.DataFrame(rows)
-    df.loc[df.consistency < 0, "consistency"] = np.nan
+    RESULTS.mkdir(exist_ok=True)
+    df.to_parquet(ROWS, index=False)
     return df
 
 
-def summarise(df: pd.DataFrame) -> pd.DataFrame:
-    out = []
-    groups = list(df.groupby(["run", "tier"])) + [((r, "ALL"), g) for r, g in df.groupby("run")]
-    for (run, tier), g in groups:
-        parsed = g[g.parse_ok == 1]
-        att = parsed[parsed.attempted == 1]
-        row = {
-            "run": run,
-            "tier": tier,
-            "n": len(g),
-            "parse_ok": parsed.shape[0] / len(g),
-            "abstain": parsed.abstained.mean(),
-            "acc_attempted": att.correct.mean() if len(att) else np.nan,
-            "mean_conf": att.confidence.mean() if len(att) else np.nan,
-        }
-        if len(att):
-            d = murphy(att.confidence, att.correct)
-            row |= {
-                "brier": brier(att.confidence, att.correct),
-                "ece": ece(att.confidence, att.correct),
-                "auroc": auroc(att.confidence, att.correct),
-                "murphy_rel": d.reliability,
-                "murphy_res": d.resolution,
-            }
-            cons = att.dropna(subset=["consistency"])
-            if len(cons):
-                row |= {
-                    "brier_cons": brier(cons.consistency, cons.correct),
-                    "ece_cons": ece(cons.consistency, cons.correct),
-                    "auroc_cons": auroc(cons.consistency, cons.correct),
-                }
-        out.append(row)
-    order = {"easy": 0, "hard": 1, "unknowable": 2, "ALL": 3}
-    return pd.DataFrame(out).sort_values(["run", "tier"], key=lambda c: c.map(order) if c.name == "tier" else c)
-
-
-def plot_reliability(df: pd.DataFrame, path: Path) -> None:
-    runs = sorted(df.run.unique())
-    fig, axes = plt.subplots(1, len(runs), figsize=(4.2 * len(runs), 4.2), squeeze=False)
-    for ax, run in zip(axes[0], runs):
-        att = df[(df.run == run) & (df.parse_ok == 1) & (df.attempted == 1)]
-        ax.plot([0, 1], [0, 1], ls="--", c="grey", lw=1)
-        for col, label, c in [("confidence", "verbal", "C0"), ("consistency", "consistency", "C1")]:
-            d = att.dropna(subset=[col])
-            if not len(d):
-                continue
-            r = reliability(d[col], d.correct)
-            m = r.count > 0
-            ax.plot(r.confidence[m], r.accuracy[m], "o-", c=c, label=label)
-            for x, yv, n in zip(r.confidence[m], r.accuracy[m], r.count[m]):
-                ax.annotate(str(n), (x, yv), fontsize=7, xytext=(3, -9), textcoords="offset points", c=c)
-        ax.set(title=run, xlabel="confidence", ylabel="accuracy", xlim=(0, 1), ylim=(0, 1))
-        ax.legend(loc="upper left", fontsize=8)
-    fig.tight_layout()
-    fig.savefig(path, dpi=150)
-    plt.close(fig)
-
-
-def plot_selective_and_penalty(df: pd.DataFrame, path: Path) -> None:
-    fig, (a1, a2) = plt.subplots(1, 2, figsize=(10, 4))
-    ts = np.linspace(0, 0.95, 39)
-    for run in sorted(df.run.unique()):
-        g = df[(df.run == run) & (df.parse_ok == 1)]
-        att = g[g.attempted == 1]
-        cov, acc = selective_curve(att.confidence, att.correct)
-        a1.plot(cov, acc, label=run)
-        pen = [penalised_score(g.confidence, g.correct, t, abstained=g.abstained == 1) for t in ts]
-        a2.plot(ts, pen, label=run)
-    a1.set(title="Selective accuracy (attempted, by verbal confidence)", xlabel="coverage", ylabel="accuracy")
-    a2.axhline(0, c="grey", lw=1)
-    a2.set(title="Kalai penalised score: wrong costs t/(1-t)", xlabel="threshold t", ylabel="score / question")
-    a1.legend(fontsize=8)
-    fig.tight_layout()
-    fig.savefig(path, dpi=150)
-    plt.close(fig)
-
-
-def disagreements(df: pd.DataFrame, n: int = 8) -> pd.DataFrame:
-    """Largest gaps between verbal confidence and sample consistency."""
-    d = df[(df.attempted == 1)].dropna(subset=["consistency"]).copy()
-    d["gap"] = d.confidence - d.consistency
-    cols = ["run", "tier", "id", "answer", "confidence", "consistency", "correct"]
-    return pd.concat([d.nlargest(n, "gap")[cols], d.nsmallest(n, "gap")[cols]])
+def check(df: pd.DataFrame) -> None:
+    """Figures to compare with the per-log summaries made earlier from the scores."""
+    print(f"{len(df)} rows, {df.config.nunique()} configs, {df.qid.nunique()} questions\n")
+    print("Rows per method and config:")
+    print(df.pivot_table(index="config", columns="method", values="qid", aggfunc="count")
+          .fillna(0).astype(int).to_string(), "\n")
+    p = df[df.method == "P"]
+    print("P accuracy by kind (correct = right answer or right behaviour):")
+    print(p.pivot_table(index="config", columns="kind", values="correct").round(2).to_string(), "\n")
+    a = df[(df.method == "A") & df.kind.isin(["computation", "perception", "recall",
+                                               "false_premise", "ambiguous", "unknowable"])]
+    rw = a.groupby(["config", "correct"]).conf.mean().unstack().round(2)
+    rw.columns = ["A conf when wrong", "A conf when right"]
+    print(rw.to_string(), "\n")
+    f = df[df.method == "F"]
+    print("Forecast Brier (F):")
+    print(((f.conf - f.correct) ** 2).groupby(f.config).mean().round(3).to_string(), "\n")
+    print("Missing labels (ERROR / UNPARSED) per method:")
+    bad = df[df.label.isin(ct.NO_LABEL)]
+    print(bad.groupby(["config", "method"]).size().to_string() if len(bad) else "none")
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--log-dir", type=Path, default=ROOT / "outputs" / "epic2" / "confidence")
-    ap.add_argument("--out", type=Path, default=None, help="defaults to <log-dir>/analysis")
+    ap.add_argument("command", choices=["check"])
+    ap.add_argument("--refresh", action="store_true", help="re-read the logs")
     args = ap.parse_args()
-    out = args.out or args.log_dir / "analysis"
-    out.mkdir(parents=True, exist_ok=True)
-
-    df = load(args.log_dir)
-    df.to_csv(out / "samples.csv", index=False)
-    summ = summarise(df)
-    summ.to_csv(out / "summary.csv", index=False)
-    with pd.option_context("display.width", 200, "display.max_columns", 30, "display.float_format", "{:.3f}".format):
-        print(summ.to_string(index=False))
-        if df.consistency.notna().any():
-            print("\nVerbal vs consistency: largest disagreements (verbal >> consistency, then <<)")
-            print(disagreements(df).to_string(index=False))
-    plot_reliability(df, out / "reliability.png")
-    plot_selective_and_penalty(df, out / "selective_penalty.png")
-    print(f"\nwrote {out.relative_to(ROOT) if out.is_relative_to(ROOT) else out}/ (summary.csv, samples.csv, *.png)")
+    df = load(args.refresh)
+    if args.command == "check":
+        check(df)
 
 
 if __name__ == "__main__":
