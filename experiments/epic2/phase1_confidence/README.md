@@ -51,6 +51,11 @@ Plan: [`docs/epic2_phase1b_plan_08-11-2026.md`](../../../docs/epic2_phase1b_plan
 - `extract_states.py`: Step 4. Hidden states at four positions (end of question, end of prompt, last answer token, mean over the answer) at every layer, from one forward pass on prompt + logged answer. Writes `states/<config>/<split>.npy|.parquet` (gitignored; about 8 GB per model). `--limit 20` is the smoke test (prints the positions and checks HF greedy answers against the logged ones, saves nothing).
 - `probe.py`: Step 5, on the PC (CPU). Per config, position and training kind (recall, computation, perception, pooled): logistic-regression probe at every layer, layer chosen on a 20% validation split of the training set, C by 5-fold CV, then scores for every test question; controls (shuffled labels, metadata-only probe) and, with `--mlp`, Ni et al.'s MLP. Writes `results/probe_layers.csv` and `results/probe_scores.parquet` (small; commit them). Tests: `tests/test_phase1b_probe.py` (synthetic states).
 
+- `probe.py --oof`: out-of-fold probe scores on the training set at the chosen layers (`results/probe_oof.parquet`), for the probe-only comparisons.
+- `analyze_probes.py`: Step 6, on the Mac (no states needed): `results/probe_auroc.csv`, `probe_gaps.csv`, `probe_vs_methods.csv`, `probe_transfer.csv`, `probe_abstain.csv`. About 5 minutes (bootstrap).
+- `plots_probes.py`: Phase 1B figures, `results/figures/probe_*.png`.
+- [`RESULTS_1B.md`](RESULTS_1B.md): Step 7 close-out.
+
 **4090 order (WSL, repo root):**
 
 ```bash
@@ -59,4 +64,7 @@ experiments/epic2/phase1_confidence/run_4090.sh train
 experiments/epic2/phase1_confidence/judge_4090.sh 4090/train
 uv run --extra evals --extra interp python experiments/epic2/phase1_confidence/extract_states.py qwen3-8b qwen3-1.7b qwen3-8b-base
 uv run --extra evals python experiments/epic2/phase1_confidence/probe.py qwen3-8b qwen3-1.7b qwen3-8b-base --mlp
+uv run --extra evals python experiments/epic2/phase1_confidence/probe.py qwen3-8b qwen3-1.7b qwen3-8b-base --oof
 ```
+
+Then on the Mac: `analyze_probes.py`, `plots_probes.py`.

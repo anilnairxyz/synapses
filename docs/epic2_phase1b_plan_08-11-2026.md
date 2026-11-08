@@ -2,7 +2,7 @@
 
 Follow-on to [Phase 1](epic2_phase1_plan_03-11-2026.md) ([results](../experiments/epic2/phase1_confidence/RESULTS.md)). Budget: about two days, mostly analysis; GPU work runs on the 4090. No API cost.
 
-> **Status (2026-11-08): plan drafted, awaiting approval. Step 1 (study) done.**
+> **Status (2026-11-08): complete.** Results: [`RESULTS_1B.md`](../experiments/epic2/phase1_confidence/RESULTS_1B.md). Change from the plan: the test set had too few right answers per kind to separate before from after, so `probe.py --oof` added out-of-fold scores on the training set (~2,000 questions per kind) for the probe-only comparisons; and a "strict" within-level control (level × task type or relation) was added after the question-details probe showed task type matters within a level.
 
 ## Question
 
@@ -70,7 +70,7 @@ The logged answer is fed back rather than regenerated, so the state belongs to e
 
 ## Steps
 
-1. **Study.** Ni et al. (above). *Done 2026-11-08.*
+1. **Study.** Ni et al. (above). *Done 2026-11-08.* Steps 2 to 6 done 2026-11-08; Step 7: `RESULTS_1B.md` done, post drafted.
 2. **Training questions.** `build_train_questions.py`: reuse the Phase 1 generators with exclusion of test items and relaxed balance; write `data/epic2/confidence/train_questions.jsonl`; report counts per kind × level. Mac, no model.
 3. **Training labels.** `run_4090.sh train`: P-only runs for the three configs, then `judge_4090.sh` on them. Check accuracy per kind × level and the class balance (each kind needs a few hundred wrong *and* right answers per model).
 4. **Extraction.** `extract_states.py`: rebuild each P prompt exactly as in the log, check the token IDs, run one forward pass on prompt + logged answer, save the four positions at every layer (float16, gitignored). `--limit 20` smoke run first on the 4090: prompt reproduces, HF greedy answer matches the logged P answer on nearly all items, shapes as expected. Then the full run.

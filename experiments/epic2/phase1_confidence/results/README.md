@@ -19,6 +19,18 @@ Generated from the judged full-run logs (8 chat configs plus Qwen3-8B-Base on P/
 | `forecasts.csv` | forecast Brier, Murphy, AUROC per model, with crowd and base-rate baselines |
 | `figures/` | blog-quality PNGs (see below) |
 
+## Phase 1B tables
+
+| File | What |
+| --- | --- |
+| `probe_layers.csv` | probe.py: validation and test within-level AUROC per (config, train kind, position, layer) |
+| `probe_scores.parquet` | probe.py: test-set scores per (config, probe, train kind, position, question); probes: logreg, mlp, shuffled, meta |
+| `probe_oof.parquet` | probe.py --oof: out-of-fold scores on the training set at the chosen layers |
+| `probe_auroc.csv`, `probe_gaps.csv` | analyze_probes.py: training-set within-level AUROC (level / strict) and paired differences (after − before, before − details, base − instruct) |
+| `probe_vs_methods.csv`, `probe_transfer.csv`, `probe_abstain.csv` | analyze_probes.py: test set, probe vs A/D/B/E, cross-kind transfer, abstention |
+
+Findings: [`../RESULTS_1B.md`](../RESULTS_1B.md).
+
 ## Findings
 
 1. **Recall vs perception is a category effect, not a difficulty effect.** With difficulty and model held fixed (regression with cell fixed effects), confidence predicts correctness much less on perception than on recall for every method: stated after (A) −6.5 log-odds [−10.6, −4.2], stated before (D) −6.1, sample agreement (B) −3.1, token probability (E) −1.8, threshold (C) −2.1, all intervals excluding 0. Stated confidence on perception carries no item-level signal at all (A slope +0.7 [−1.6, 2.4], D −0.4 [−1.3, 0.7]). Figures: `regression_slopes.png`, `acc_vs_auroc.png`, `auroc_within.png`.
