@@ -23,7 +23,9 @@ experiments/epic2/phase1_confidence/run_4090.sh pilot        # 10 questions per 
 experiments/epic2/phase1_confidence/run_4090.sh full         # overnight
 ```
 
-**Judge pass on the 4090:** `experiments/epic2/phase1_confidence/judge_4090.sh [full|pilot|full/<config>]` serves Qwen3-14B-FP8 (thinking off) and re-scores every log in place.
+**Judge pass on the 4090:** `experiments/epic2/phase1_confidence/judge_4090.sh [full|pilot|full/<config>]` serves Qwen3-14B-FP8 (thinking off; `THINK=1` for on) and re-scores every log in place.
+
+**Judge validation:** `checks/gold_set.jsonl` holds 120 hand-labelled responses (drafted by Claude, reviewed by Anil, 2026-11-08; built by `make_goldset.py`, readable in `checks/gold_set_review.md`). `check_judge.py` runs the code rules and the judge on it and reports agreement; `judge_4090.sh check` does this on the 4090 with thinking off and on, saving results in `checks/judge_check_*.txt`. Re-run the check whenever a judge prompt or rule changes.
 
 **Judge pass, by hand** (anywhere the grader model is reachable; overwrites the scores in the log):
 

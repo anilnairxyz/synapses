@@ -64,6 +64,25 @@ def test_judge_label_parsing():
     assert not ct._BARE_YEAR.match("Blake did not write it; Schwartz did in 2003.")
 
 
+def test_refusal_rule():
+    for a in ("Unknown", "Unclear", "Not applicable", "N/A", "None", "Not available",
+              "The question cannot be answered as asked.", "The question cannot be answered.",
+              "The question cannot be answered with the given information.", "Cannot determine",
+              "Cannot be determined.", "Cannot be predicted", "I cannot answer",
+              "I cannot confirm the year.", "Unable to confirm", "The question is incorrect.",
+              "Question is unclear", "Unanswerable", "Not publicly known.", "It is impossible to determine"):
+        assert ct.is_refusal(a), a
+    for a in ("Never", "The question is ambiguous.", "Woody Allen did not direct it.",
+              "The question cannot be answered as asked. Kafka did not write it.", "1885"):
+        assert not ct.is_refusal(a), a
+    fp = q(category="ill_posed", kind="behaviour", meta={"type": "false_premise"})
+    assert ct.rule_label(fp, "false_premise", "Unknown") == "ABSTAINS"
+    assert ct.rule_label(fp, "false_premise", "In 1885.") == "ANSWERS"
+    assert ct.rule_label(fp, "false_premise", "Never") is None  # left to the judge
+    rec = q(category="recall", gold_answers=["Christophe Beck"])
+    assert ct.rule_label(rec, "recall", "Not applicable") == "ABSTAINS"
+
+
 def test_spread_covers_levels():
     rows = [{"id": f"{lv}-{i}", "level": lv} for lv in (1, 2, 3, 4, 5) for i in range(30)]
     picked = ct._spread(rows, 10)
@@ -100,7 +119,7 @@ def scripted_model(prompt_text: str) -> str:
     if "resolves YES" in prompt_text:
         return '{"probability": 0.7}'
     ans = ("8330" if "85 × 98" in prompt_text else
-           "Directed by Rob Zombie" if "Halloween" in prompt_text else "It can't be known.")
+           "Directed by Rob Zombie" if "Halloween" in prompt_text else "No record of that survives.")
     if "confidence first" in prompt_text:
         return json.dumps({"confidence": 0.8, "answer": ans})
     if "JSON object" in prompt_text:
