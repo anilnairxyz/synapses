@@ -157,7 +157,7 @@ Grading: exact for computation and perception; alias match then judge for recall
 5. **Full runs.** The model line-up across tiers.
 6. **Close-out.** `experiments/epic2/phase1_confidence/RESULTS.md`: per-category tables, where methods disagree, hard–easy effect, abstention behaviour, the forecasting result kept apart; a go/no-go for the sprint; a full "Inside …" post on lifeandtimes, in the style of the Epic 1 posts (inside-a-vae, inside-simclr, …), so Step 3's plots are made to blog quality. **Done 2026-11-08:** [`RESULTS.md`](../experiments/epic2/phase1_confidence/RESULTS.md) (go, as a strong sprint candidate; final pick after Phases 2–4) and the post `inside-a-confidence-audit` (draft) on lifeandtimes.
 
-**Phase 1B (straight after):** linear probes on the open models' hidden states before and after generation, on the same question set; the key test is recall vs computation.
+**Phase 1B (straight after):** linear probes on the open models' hidden states before and after generation, on the same question set; the key test is recall vs computation. Plan: [`epic2_phase1b_plan_08-11-2026.md`](epic2_phase1b_plan_08-11-2026.md).
 
 ## Out of scope for Phase 1
 
