@@ -31,6 +31,24 @@ accuracy across the five levels (1 = confidence falls exactly as accuracy falls,
 ignores difficulty, the hard-easy effect at its strongest), and overconfidence on the easiest
 and hardest level (results/hard_easy_summary.csv).
 
+Part 5, the methods compared (`methods_compared()`): Spearman correlation between the methods'
+confidences per model on answerable questions (results/method_corr.csv); D vs A, paired per
+question: mean shift and within-level AUROC difference with a paired bootstrap, Haiku's replies
+with a reasoning preamble left out (results/d_vs_a.csv); and the questions where stated
+confidence and sample agreement disagree most (A >= 0.9 with B <= 0.5, and A <= 0.5 with
+B >= 0.9), with P's accuracy in each group (results/disagree_counts.csv, disagree_examples.csv).
+
+Part 6, behaviour categories (false_premise, ambiguous, unknowable; `behaviour()`): rate of the
+right behaviour per model, kind and call (P, A, D, C at each threshold), and stated confidence
+(A, D) by outcome (results/behaviour_rates.csv, behaviour_conf.csv). Plus the Kalai threshold
+calls on answerable questions (`kalai()`): answer rate, accuracy of what is answered, and the
+penalised score at each t (+1 right, -t/(1-t) wrong, 0 abstain), against the t = 0 answers
+scored under the same penalty, i.e. what abstaining gained (results/kalai.csv).
+
+Part 7, forecasts (`forecasts()`): Brier and Murphy decomposition of F and FB per model, AUROC,
+mean sample spread, against the crowd forecast and the base rate on the same 75 questions
+(results/forecasts.csv). Confidence about the world, so reported apart from self-knowledge.
+
 Methods (rows), and which answer each row's `correct` refers to:
   P        the plain answer (no confidence of its own; carries accuracy and abstention)
   A, D     stated confidence after / before answering, scored on their own answer
@@ -47,7 +65,7 @@ Methods (rows), and which answer each row's `correct` refers to:
            holds the outcome (0/1), so Brier etc. apply directly
 
 Columns: source, config, qid, category, kind, level, method, answer, label, correct (0/1/NaN),
-abstained (0/1/NaN), conf, preamble.
+abstained (0/1/NaN), conf, preamble, crowd, spread.
   kind     computation, perception, recall, false_premise, ambiguous, unknowable, forecastable
   label    the grader's label (CORRECT / INCORRECT / ABSTAINS / CORRECTS_PREMISE / ...);
            ERROR / UNPARSED when the call failed or its reply couldn't be read
@@ -57,12 +75,18 @@ abstained (0/1/NaN), conf, preamble.
            computation out first (86% of A, 73% of D replies), so its D is not confidence
            *before* answering there, and on ill-posed items a clarification can sit in the
            preamble while the judged JSON answer picks one work.
+  crowd    F and FB only: the crowd's probability on the as-of date (ForecastBench)
+  spread   FB only: standard deviation of the k sampled probabilities
 
 Usage (repo root):
   uv run --extra evals python experiments/epic2/phase1_confidence/analyze.py check
   uv run --extra evals python experiments/epic2/phase1_confidence/analyze.py discrimination
   uv run --extra evals python experiments/epic2/phase1_confidence/analyze.py difficulty
   uv run --extra evals python experiments/epic2/phase1_confidence/analyze.py hard-easy
+  uv run --extra evals python experiments/epic2/phase1_confidence/analyze.py methods
+  uv run --extra evals python experiments/epic2/phase1_confidence/analyze.py behaviour
+  uv run --extra evals python experiments/epic2/phase1_confidence/analyze.py forecasts
+  uv run --extra evals python experiments/epic2/phase1_confidence/analyze.py all   # every table
 """
 
 from __future__ import annotations
@@ -140,8 +164,10 @@ def sample_rows(source: str, config: str, s) -> list[dict]:
     if q["category"] == "forecastable":
         y = float(q["meta"]["outcome"])
         fb = [p for p in sc.metadata.get("fb", []) if p is not None]
-        return [row("F", conf=calls["F"].get("confidence"), correct=y),
-                row("FB", conf=np.mean(fb) if fb else np.nan, correct=y)]
+        crowd = q["meta"].get("crowd")
+        return [row("F", conf=calls["F"].get("confidence"), correct=y) | {"crowd": crowd},
+                row("FB", conf=np.mean(fb) if fb else np.nan, correct=y)
+                | {"crowd": crowd, "spread": np.std(fb) if len(fb) > 1 else np.nan}]
 
     labels = sc.metadata["labels"]
     rows = []
@@ -192,6 +218,8 @@ def load(refresh: bool = False) -> pd.DataFrame:
                 raise SystemExit(f"{f}: {s.id} not judged; run judge_4090.sh first")
             rows += sample_rows(source, config, s)
     df = pd.DataFrame(rows)
+    for col in ("crowd", "spread"):
+        df[col] = df[col].astype(float)
     RESULTS.mkdir(exist_ok=True)
     df.to_parquet(ROWS, index=False)
     return df
@@ -366,6 +394,141 @@ def hard_easy(df: pd.DataFrame, min_n: int = 5) -> tuple[pd.DataFrame, pd.DataFr
     return lv, pd.DataFrame(out)
 
 
+PROB_METHODS = ("A", "D", "B", "E")
+BEHAVIOUR = ("false_premise", "ambiguous", "unknowable")
+
+
+def _wide(df: pd.DataFrame, value: str, methods, kinds=ANSWERABLE) -> pd.DataFrame:
+    d = df[df.method.isin(methods) & df.kind.isin(kinds)]
+    return d.pivot_table(index=["config", "qid", "kind", "level"], columns="method",
+                         values=value, aggfunc="first").reset_index()
+
+
+def method_corr(df: pd.DataFrame) -> pd.DataFrame:
+    """Spearman correlation between methods' confidences, per model, answered questions."""
+    d = df[(df.abstained == 0) | df.method.isin(["B", "E"])]  # B, E inherit P's abstention
+    d = d[d.abstained == 0]
+    w = _wide(d, "conf", ("A", "D", "B", "E", "C"))
+    out = []
+    for config, g in w.groupby("config"):
+        ms = [m for m in ("A", "D", "B", "E", "C") if m in g and g[m].notna().sum() > 20]
+        for i, a in enumerate(ms):
+            for b in ms[i + 1:]:
+                pair = g[[a, b]].dropna()
+                out.append({"config": config, "a": a, "b": b, "n": len(pair),
+                            "spearman": pair[a].corr(pair[b], method="spearman")})
+    return pd.DataFrame(out)
+
+
+def d_vs_a(df: pd.DataFrame, n_boot: int = 1000, seed: int = 0) -> pd.DataFrame:
+    """Paired per question: both A and D answered, neither with a reasoning preamble."""
+    d = df[df.method.isin(["A", "D"]) & df.kind.isin(ANSWERABLE)]
+    w = d.pivot_table(index=["config", "qid", "kind", "level"], columns="method",
+                      values=["conf", "correct", "abstained", "preamble"], aggfunc="first")
+    w.columns = [f"{v}_{m}" for v, m in w.columns]
+    w = w.reset_index()
+    ok = ((w.abstained_A == 0) & (w.abstained_D == 0) & w.correct_A.notna() & w.correct_D.notna()
+          & w.conf_A.notna() & w.conf_D.notna())
+    rng = np.random.default_rng(seed)
+    out = []
+    for (config, kind), g in w[ok].groupby(["config", "kind"]):
+        dropped = int(((g.preamble_A == True) | (g.preamble_D == True)).sum())  # noqa: E712
+        g = g[(g.preamble_A != True) & (g.preamble_D != True)].reset_index(drop=True)  # noqa: E712
+        lv = g.level.to_numpy()
+
+        def diff(idx):
+            h = g.iloc[idx]
+            return (stratified_auroc(h.conf_D, h.correct_D, h.level)
+                    - stratified_auroc(h.conf_A, h.correct_A, h.level))
+        row = {"config": config, "kind": kind, "n": len(g), "dropped_preamble": dropped,
+               "conf_A": g.conf_A.mean(), "conf_D": g.conf_D.mean(),
+               "acc_A": g.correct_A.mean(), "acc_D": g.correct_D.mean(),
+               "auroc_within_A": stratified_auroc(g.conf_A, g.correct_A, lv) if len(g) else np.nan,
+               "auroc_within_D": stratified_auroc(g.conf_D, g.correct_D, lv) if len(g) else np.nan}
+        both = all(min(g[f"correct_{m}"].sum(), (1 - g[f"correct_{m}"]).sum()) >= MIN_CLASS
+                   for m in "AD")
+        row["reportable"] = both
+        row["diff"] = row["auroc_within_D"] - row["auroc_within_A"]
+        if both:
+            boots = np.array([diff(rng.integers(0, len(g), len(g))) for _ in range(n_boot)])
+            boots = boots[~np.isnan(boots)]
+            row["diff_lo"], row["diff_hi"] = np.quantile(boots, [0.025, 0.975])
+        out.append(row)
+    return pd.DataFrame(out)
+
+
+def disagreements(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Questions where stated confidence (A) and sample agreement (B) point opposite ways."""
+    w = _wide(df[df.abstained == 0], "conf", ("A", "B"))
+    p = df[(df.method == "P") & df.kind.isin(ANSWERABLE)][["config", "qid", "answer", "correct"]]
+    a_ok = df[df.method == "A"][["config", "qid", "correct"]].rename(columns={"correct": "a_correct"})
+    w = w.dropna(subset=["A", "B"]).merge(p, on=["config", "qid"]).merge(a_ok, on=["config", "qid"])
+    w["group"] = np.select([(w.A >= 0.9) & (w.B <= 0.5), (w.A <= 0.5) & (w.B >= 0.9)],
+                           ["says sure, samples scatter", "says unsure, samples agree"], "other")
+    counts = (w.groupby(["config", "group"])
+              .agg(n=("qid", "size"), p_acc=("correct", "mean")).reset_index())
+    counts["share"] = counts.n / counts.groupby("config").n.transform("sum")
+    examples = w[w.group != "other"].sort_values(["group", "config", "kind", "qid"])
+    return counts, examples
+
+
+def behaviour(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    calls = ("P", "A", "D", "C0.0", "C0.5", "C0.75", "C0.9")
+    d = df[df.method.isin(calls) & df.kind.isin(BEHAVIOUR) & df.correct.notna()]
+    rates = (d.groupby(["config", "kind", "method"])
+             .agg(n=("qid", "size"), right=("correct", "mean"), abstain=("abstained", "mean"))
+             .reset_index())
+    lab = d[d.method.isin(["P"])].groupby(["config", "kind"]).label.value_counts(normalize=True)
+    rates = rates.merge(lab.unstack().reset_index().assign(method="P"),
+                        on=["config", "kind", "method"], how="left")
+    c = d[d.method.isin(["A", "D"])]
+    conf = (c.groupby(["config", "kind", "method", "label"])
+            .agg(n=("qid", "size"), conf=("conf", "mean")).reset_index())
+    return rates, conf
+
+
+def kalai(df: pd.DataFrame) -> pd.DataFrame:
+    """The threshold calls on answerable questions: what abstaining gained under the penalty."""
+    d = df[df.method.str.startswith("C0") & df.kind.isin(ANSWERABLE) & df.correct.notna()]
+    base = d[d.method == "C0.0"].set_index(["config", "qid"])
+    out = []
+    for (config, kind, method), g in d.groupby(["config", "kind", "method"]):
+        t = float(method[1:])
+        pen = t / (1 - t)
+        answered = g.abstained == 0
+        score = np.where(answered, np.where(g.correct == 1, 1.0, -pen), 0.0).mean()
+        b = base.loc[[(config, q) for q in g.qid if (config, q) in base.index]]
+        b_ans = b.abstained == 0
+        always = np.where(b_ans, np.where(b.correct == 1, 1.0, -pen), 0.0).mean()
+        out.append({"config": config, "kind": kind, "t": t, "n": len(g),
+                    "answer_rate": answered.mean(),
+                    "acc_answered": g.correct[answered].mean() if answered.any() else np.nan,
+                    "score": score, "score_t0_answers": always, "gain": score - always})
+    return pd.DataFrame(out)
+
+
+def forecasts(df: pd.DataFrame) -> pd.DataFrame:
+    f = df[df.method.isin(["F", "FB"]) & df.conf.notna()]
+    out = []
+    crowd = f[f.method == "F"].drop_duplicates("qid")
+    y_all = crowd.correct.to_numpy()
+    ref = {"crowd": crowd.crowd.to_numpy(), "base rate": np.full(len(y_all), y_all.mean())}
+    for name, pr in ref.items():
+        m = murphy(pr, y_all)
+        out.append({"config": name, "method": "", "n": len(y_all), "brier": brier(pr, y_all),
+                    "reliability": m.reliability, "resolution": m.resolution,
+                    "auroc": auroc(pr, y_all), "mean_p": pr.mean()})
+    for (config, method), g in f.groupby(["config", "method"]):
+        p, y = g.conf.to_numpy(), g.correct.to_numpy()
+        m = murphy(p, y)
+        out.append({"config": config, "method": method, "n": len(g), "brier": brier(p, y),
+                    "reliability": m.reliability, "resolution": m.resolution,
+                    "auroc": auroc(p, y), "mean_p": p.mean(),
+                    "crowd_brier_same_q": brier(g.crowd, y),
+                    "mean_spread": g.spread.mean() if method == "FB" else np.nan})
+    return pd.DataFrame(out)
+
+
 def save(res: pd.DataFrame, name: str) -> pd.DataFrame:
     """Write a results table (only main() does, so tests never touch results/)."""
     RESULTS.mkdir(exist_ok=True)
@@ -375,24 +538,30 @@ def save(res: pd.DataFrame, name: str) -> pd.DataFrame:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("command", choices=["check", "discrimination", "difficulty", "hard-easy"])
+    ap.add_argument("command", choices=["check", "discrimination", "difficulty", "hard-easy",
+                                        "methods", "behaviour", "forecasts", "all"])
     ap.add_argument("--refresh", action="store_true", help="re-read the logs")
     args = ap.parse_args()
     df = load(args.refresh)
-    if args.command == "check":
+    cmd = args.command
+
+    def run(c: str) -> bool:
+        return cmd in (c, "all")
+
+    if cmd == "check":
         check(df)
-    elif args.command == "discrimination":
-        show_discrimination(save(discrimination(df), "discrimination"))
-    elif args.command == "difficulty":
-        show_within(save(discrimination(df), "discrimination"))
+    if run("discrimination") or run("difficulty"):
+        res = save(discrimination(df), "discrimination")
+        show_discrimination(res) if cmd == "discrimination" else show_within(res)
+    if run("difficulty"):
         save(cells(df), "cells")
         reg = save(regression(df), "regression")
         print("== Regression: confidence slope per kind (log-odds, most vs least confident answer"
               " in the same model x kind x level cell) [95% CI]")
         reg["cell"] = reg.apply(lambda r: f"{r.slope:+.2f} [{r.lo:+.2f},{r.hi:+.2f}]", axis=1)
         print(reg.pivot(index="term", columns="method", values="cell")
-              .reindex(columns=["A", "D", "B", "E", "C"]).to_string())
-    elif args.command == "hard-easy":
+              .reindex(columns=["A", "D", "B", "E", "C"]).to_string(), "\n")
+    if run("hard-easy"):
         lv, summ = hard_easy(df)
         save(lv, "hard_easy")
         save(summ, "hard_easy_summary")
@@ -403,7 +572,54 @@ def main() -> None:
                            ("over_hardest", "Overconfidence, hardest level")):
             t = summ.pivot_table(index="config", columns=["kind", "method"], values=col)
             print(f"== {title}\n{t.round(2).fillna('').to_string()}\n")
-
+    if run("methods"):
+        corr = save(method_corr(df), "method_corr")
+        corr["pair"] = corr.a + "~" + corr.b
+        print("== Spearman correlation between methods (answerable, answered)")
+        print(corr.pivot(index="config", columns="pair", values="spearman").round(2)
+              .fillna("").to_string(), "\n")
+        dva = save(d_vs_a(df), "d_vs_a")
+        dva["cell"] = dva.apply(lambda r: (f"{r.auroc_within_A:.2f} vs {r.auroc_within_D:.2f}  "
+                                           f"{r['diff']:+.2f} [{r.diff_lo:+.2f},{r.diff_hi:+.2f}]")
+                                if r.reportable else "-", axis=1)
+        print("== Within-level AUROC, A (after) vs D (before), D - A [95% CI]; Haiku preamble"
+              " replies left out")
+        print(dva.pivot(index="config", columns="kind", values="cell").to_string(), "\n")
+        print("== Mean stated confidence, A vs D (same questions)")
+        print(dva.pivot(index="config", columns="kind", values=["conf_A", "conf_D"]).round(2)
+              .to_string(), "\n")
+        counts, ex = disagreements(df)
+        save(counts, "disagree_counts")
+        save(ex, "disagree_examples")
+        print("== A vs B disagreements: share of answered answerable questions, P accuracy")
+        c = counts[counts.group != "other"]
+        print(c.pivot(index="config", columns="group", values=["share", "p_acc"]).round(2)
+              .to_string(), "\n")
+    if run("behaviour"):
+        rates, conf = behaviour(df)
+        save(rates, "behaviour_rates")
+        save(conf, "behaviour_conf")
+        print("== Right behaviour rate (correct premise / clarify / abstain) by call")
+        print(rates.pivot_table(index="config", columns=["kind", "method"], values="right")
+              .reindex(columns=["P", "A", "D", "C0.0", "C0.9"], level=1).round(2).to_string(), "\n")
+        print("== Mean stated confidence (A) by P-label kind of response")
+        a = conf[conf.method == "A"]
+        print(a.pivot_table(index="config", columns=["kind", "label"], values="conf").round(2)
+              .fillna("").to_string(), "\n")
+        print("== Mean stated confidence (D, before answering) by label")
+        dd = conf[conf.method == "D"]
+        print(dd.pivot_table(index="config", columns=["kind", "label"], values="conf").round(2)
+              .fillna("").to_string(), "\n")
+        k = save(kalai(df), "kalai")
+        print("== Kalai threshold calls, answerable: answer rate / gain from abstaining vs"
+              " answering everything (penalised score)")
+        k["cell"] = k.apply(lambda r: f"{r.answer_rate:.2f} / {r.gain:+.2f}", axis=1)
+        print(k[k.t > 0].pivot_table(index="config", columns=["kind", "t"], values="cell",
+                                     aggfunc="first").to_string(), "\n")
+    if run("forecasts"):
+        fc = save(forecasts(df), "forecasts")
+        print("== Forecasts (75 questions): Brier, Murphy, AUROC")
+        print(fc.round(3).fillna("").to_string(index=False))
 
 if __name__ == "__main__":
     main()

@@ -98,3 +98,45 @@ def test_hard_easy_sensitivity():
     s = s.set_index("config")
     assert abs(s.loc["flat", "sensitivity"]) < 1e-9 and abs(s.loc["tracks", "sensitivity"] - 1) < 1e-9
     assert abs(s.loc["flat", "over_hardest"] - 0.95) < 1e-9 and abs(s.loc["tracks", "over_hardest"]) < 1e-9
+
+
+def _rows(**cols):
+    import pandas as pd
+
+    n = max(len(v) for v in cols.values() if isinstance(v, list))
+    return pd.DataFrame({k: v if isinstance(v, list) else [v] * n for k, v in cols.items()})
+
+
+def test_d_vs_a_drops_preamble_pairs():
+    import pandas as pd
+
+    rows = []
+    for i in range(30):
+        right = float(i % 2)
+        for m, conf in (("A", 0.9), ("D", 0.2 + 0.6 * right)):  # D informative, A flat
+            rows.append({"config": "m", "qid": f"q{i}", "kind": "recall", "level": 1,
+                         "method": m, "conf": conf, "correct": right, "abstained": 0.0,
+                         "preamble": m == "A" and i < 4})
+    r = analyze.d_vs_a(pd.DataFrame(rows), n_boot=50).iloc[0]
+    assert r.n == 26 and r.dropped_preamble == 4
+    assert r.auroc_within_A == 0.5 and r.auroc_within_D == 1.0 and r.diff_lo > 0
+
+
+def test_kalai_penalised_score():
+    # At t = 0.75 (penalty 3): one right answer, one wrong, two abstentions -> (1 - 3) / 4.
+    rows = _rows(config="m", qid=["a", "b", "c", "d"] * 2, kind="recall", level=1,
+                 method=["C0.75"] * 4 + ["C0.0"] * 4,
+                 correct=[1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0],
+                 abstained=[0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0])
+    k = analyze.kalai(rows).set_index("t")
+    assert k.loc[0.75, "score"] == -0.5 and k.loc[0.75, "answer_rate"] == 0.5
+    assert k.loc[0.75, "score_t0_answers"] == (1 - 3 - 3 + 1) / 4  # answering everything
+
+
+def test_forecast_baselines():
+    rows = _rows(config="m", qid=["a", "b", "c", "d"], kind="forecastable", level=1,
+                 method="F", conf=[0.9, 0.1, 0.9, 0.1], correct=[1.0, 0.0, 1.0, 0.0],
+                 crowd=[0.5, 0.5, 0.5, 0.5], spread=np.nan)
+    f = analyze.forecasts(rows).set_index("config")
+    assert abs(f.loc["m", "brier"] - 0.01) < 1e-9
+    assert f.loc["crowd", "brier"] == 0.25 and f.loc["base rate", "brier"] == 0.25

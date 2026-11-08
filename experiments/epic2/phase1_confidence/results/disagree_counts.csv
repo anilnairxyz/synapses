@@ -1,0 +1,20 @@
+config,group,n,p_acc,share
+claude-haiku,other,353,0.8017,0.8527
+claude-haiku,"says sure, samples scatter",60,0.2833,0.1449
+claude-haiku,"says unsure, samples agree",1,1.0000,0.0024
+gpt-4o,other,332,0.8554,0.8117
+gpt-4o,"says sure, samples scatter",77,0.1299,0.1883
+gpt-5-nano,other,384,0.9505,0.9871
+gpt-5-nano,"says sure, samples scatter",1,0.0000,0.0026
+gpt-5-nano,"says unsure, samples agree",4,1.0000,0.0103
+grok-4-1-fast,other,337,0.6113,0.8062
+grok-4-1-fast,"says sure, samples scatter",81,0.0988,0.1938
+qwen3-1.7b,other,214,0.4486,0.4977
+qwen3-1.7b,"says sure, samples scatter",213,0.0235,0.4953
+qwen3-1.7b,"says unsure, samples agree",3,0.0000,0.0070
+qwen3-14b,other,298,0.5537,0.6946
+qwen3-14b,"says sure, samples scatter",131,0.0840,0.3054
+qwen3-8b,other,236,0.4619,0.5579
+qwen3-8b,"says sure, samples scatter",187,0.0428,0.4421
+qwen3-8b-think,other,361,0.8809,0.8595
+qwen3-8b-think,"says sure, samples scatter",59,0.1695,0.1405
