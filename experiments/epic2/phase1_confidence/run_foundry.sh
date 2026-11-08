@@ -35,22 +35,32 @@ fi
 [ -n "${FOUNDRY_BASE_URL:-}" ] && [ -n "${FOUNDRY_API_KEY:-}" ] || { echo "FOUNDRY_BASE_URL / FOUNDRY_API_KEY not set"; exit 1; }
 
 # config | deployment | extra args
+# (phi-4-mini-instruct was dropped after the pilot: too slow on Foundry to be practical)
+# max_tokens=256 for the non-reasoning models: Azure counts max_tokens against the deployment's
+# tokens-per-minute limit, and in the pilot no answer was longer than 35 tokens, so 256 truncates
+# nothing but lets ~3x more calls through (gpt-4o's quota is only 50K TPM).
 # gpt-5-nano is a reasoning model: it accepts only its default temperature (main_temperature=null)
 # and its hidden reasoning counts against max_tokens, so it gets more room and low effort.
 CONFIGS=(
-  "grok-4-1-fast|grok-4-1-fast-non-reasoning|"
-  "gpt-4o|gpt-4o|"
-  "phi-4-mini|phi-4-mini-instruct|"
+  "grok-4-1-fast|grok-4-1-fast-non-reasoning|-T max_tokens=256"
+  "gpt-4o|gpt-4o|-T max_tokens=256"
   "gpt-5-nano|gpt-5-nano|-T main_temperature=null -T max_tokens=4000 --reasoning-effort low"
 )
 
+status=0
 for entry in "${CONFIGS[@]}"; do
   IFS="|" read -r name deployment extra <<< "$entry"
   if [ $# -gt 0 ] && [[ ! " $* " =~ " $name " ]]; then continue; fi
   echo "=== $name ($deployment) $(date +%H:%M)"
+  # The task path must be relative: Inspect rejects absolute task paths ("Non-relative patterns
+  # are unsupported"). The script has cd'd to the repo root above.
   # shellcheck disable=SC2086
-  uv run --extra azure inspect eval "$HERE/confidence_task.py" --model "openai-api/foundry/$deployment" \
+  if uv run --extra azure inspect eval confidence/confidence_task.py --model "openai-api/foundry/$deployment" \
     -T questions="$HERE/questions.jsonl" $LIMIT $extra \
-    --max-connections 20 --tags "$name" --log-dir "outputs/confidence/$MODE/$name" --display plain
-  echo "=== $name done $(date +%H:%M)"
+    --max-connections 20 --tags "$name" --log-dir "outputs/confidence/$MODE/$name" --display plain; then
+    echo "=== $name done $(date +%H:%M)"
+  else
+    echo "=== $name FAILED (exit $?) $(date +%H:%M)"; status=1
+  fi
 done
+exit $status

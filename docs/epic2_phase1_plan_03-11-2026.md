@@ -132,7 +132,7 @@ The phase tests our methods, not the models, so each model is there for what it 
 | Qwen3-8B-Base (P and B only, 5-shot) | 4090 | base vs instruct calibration of token probabilities (Kalai's prediction) |
 | grok-4-1-fast-non-reasoning | Foundry | another vendor, with logprobs |
 | gpt-5-nano | Foundry | closed reasoning model, no logprobs |
-| Phi-4-mini-instruct | Foundry | small and weak (many errors), no logprobs |
+| ~~Phi-4-mini-instruct~~ | Foundry | dropped after the pilot (2026-11-08): too slow on Foundry (4 of 60 questions in 11 minutes) |
 | gpt-4o | Foundry | strong OpenAI non-reasoning, with logprobs (replaced gpt-4.1-mini on 2026-11-08: real cost is about $4.70 a run, and the judge is now Qwen3-14B on the 4090, validated on a hand-labelled gold set) |
 | Claude Haiku 5.5, low effort | personal | no temperature control, no logprobs |
 
