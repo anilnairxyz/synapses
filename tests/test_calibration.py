@@ -10,6 +10,7 @@ from synapses.calibration import (
     penalised_score,
     reliability,
     selective_curve,
+    stratified_auroc,
 )
 
 
@@ -94,3 +95,19 @@ def test_penalised_score():
     assert penalised_score(p, y, 0.0) == pytest.approx(2 / 3)
     # explicit abstention overrides confidence
     assert penalised_score(p, y, 0.5, abstained=[False, True, False]) == pytest.approx(1 / 3)
+
+
+def test_stratified_auroc():
+    # Confidence tracks the level perfectly but says nothing within a level.
+    p = [0.9, 0.9, 0.1, 0.1]
+    y = [1, 0, 1, 0]
+    lv = [1, 1, 2, 2]
+    assert stratified_auroc(p, y, [0, 0, 0, 0]) == pytest.approx(0.5)
+    p2 = [0.9, 0.9, 0.9, 0.1, 0.1, 0.1]
+    y2 = [1, 1, 0, 1, 0, 0]
+    lv2 = [1, 1, 1, 2, 2, 2]
+    assert auroc(p2, y2) == pytest.approx(6 / 9)  # plain AUROC rewards tracking the level
+    assert stratified_auroc(p2, y2, lv2) == pytest.approx(0.5)  # within levels: no signal
+    assert stratified_auroc(p, y, lv) == pytest.approx(0.5)
+    assert stratified_auroc([0.9, 0.1, 0.8, 0.2], y, lv) == 1
+    assert np.isnan(stratified_auroc([0.5, 0.6], [1, 0], [1, 2]))  # no stratum has both

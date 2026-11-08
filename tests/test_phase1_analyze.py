@@ -57,3 +57,25 @@ def test_forecast_rows():
                                                        fb=[0.2, None, 0.4])))
     assert r["F"]["conf"] == 0.3 and r["F"]["correct"] == 1
     assert abs(r["FB"]["conf"] - 0.3) < 1e-9
+
+
+def test_regression_recovers_category_slopes():
+    """Confidence predicts correctness within each cell for recall, not for perception."""
+    import pandas as pd
+
+    rng = np.random.default_rng(0)
+    rows = []
+    for config in ("m1", "m2"):
+        for kind in analyze.ANSWERABLE:
+            for level in (1, 2, 3):
+                for i in range(80):
+                    conf = rng.random()
+                    base = {1: 0.8, 2: 0.5, 3: 0.2}[level]
+                    p = base + (0.4 * (conf - 0.5) if kind == "recall" else 0.0)
+                    rows.append({"config": config, "qid": f"{kind}-{level}-{i}", "kind": kind,
+                                 "level": level, "method": "A", "abstained": 0.0, "conf": conf,
+                                 "correct": float(rng.random() < p)})
+    res = analyze.regression(pd.DataFrame(rows), methods=("A",), n_boot=50).set_index("term")
+    assert res.loc["recall", "lo"] > 0  # informative
+    assert res.loc["perception", "lo"] < 0 < res.loc["perception", "hi"]  # no signal
+    assert res.loc["perception - recall", "hi"] < 0

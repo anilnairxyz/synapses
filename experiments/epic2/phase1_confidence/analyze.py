@@ -10,6 +10,19 @@ interval, and for methods that give a probability, Brier, its Murphy decompositi
 AUROC is marked reportable only with at least MIN_CLASS right and MIN_CLASS wrong answers.
 Written to results/discrimination.csv.
 
+Part 3, controlling for difficulty (meta-d′ was dropped: open-ended answers have no type-1 d′):
+  - within-level AUROC (`auroc_within` in discrimination.csv): right/wrong pairs compared only
+    inside the same difficulty level (kind x level for the "answerable" union). Plain AUROC also
+    rewards confidence that merely tracks the level ("six-digit products are hard"); within-level
+    AUROC is item-level self-knowledge among equally hard questions.
+  - `regression()`: per method, pooled over models, logistic regression of correct on the
+    within-model percentile rank of confidence, one slope per kind, with a fixed effect for every
+    (model, kind, level) cell, so difficulty and model accuracy are held fixed. The slope is the
+    log-odds of being right for the model's most vs least confident answer in the same cell.
+    Bootstrap intervals resample questions. Written to results/regression.csv.
+  - `cells()`: accuracy and AUROC per (model, kind, level, method), for the accuracy-vs-AUROC
+    plot (results/cells.csv).
+
 Methods (rows), and which answer each row's `correct` refers to:
   P        the plain answer (no confidence of its own; carries accuracy and abstention)
   A, D     stated confidence after / before answering, scored on their own answer
@@ -40,6 +53,7 @@ abstained (0/1/NaN), conf, preamble.
 Usage (repo root):
   uv run --extra evals python experiments/epic2/phase1_confidence/analyze.py check
   uv run --extra evals python experiments/epic2/phase1_confidence/analyze.py discrimination
+  uv run --extra evals python experiments/epic2/phase1_confidence/analyze.py difficulty
 """
 
 from __future__ import annotations
@@ -58,7 +72,16 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import confidence_task as ct  # noqa: E402
 
-from synapses.calibration import auroc, bootstrap_ci, brier, ece, murphy  # noqa: E402
+from sklearn.linear_model import LogisticRegression  # noqa: E402
+
+from synapses.calibration import (  # noqa: E402
+    auroc,
+    bootstrap_ci,
+    brier,
+    ece,
+    murphy,
+    stratified_auroc,
+)
 
 RUNS = HERE / "runs"
 RESULTS = HERE / "results"
@@ -205,6 +228,16 @@ def discrimination(df: pd.DataFrame, n_boot: int = 2000) -> pd.DataFrame:
                    "auroc_hi": np.nan}
             if row["reportable"]:
                 row["auroc_lo"], row["auroc_hi"] = bootstrap_ci(auroc, p, y, n_boot=n_boot)
+            strata = (a.kind + ":" + a.level.astype(str)).to_numpy()
+            both = pd.Series(y).groupby(strata).transform(lambda v: 0 < v.sum() < len(v)).to_numpy()
+            w_right, w_wrong = int(y[both].sum()), int(both.sum() - y[both].sum())
+            row |= {"n_right_within": w_right, "n_wrong_within": w_wrong,
+                    "reportable_within": w_right >= MIN_CLASS and w_wrong >= MIN_CLASS,
+                    "auroc_within": stratified_auroc(p, y, strata) if len(y) else np.nan,
+                    "auroc_within_lo": np.nan, "auroc_within_hi": np.nan}
+            if row["reportable_within"]:
+                row["auroc_within_lo"], row["auroc_within_hi"] = bootstrap_ci(
+                    stratified_auroc, p, y, strata, n_boot=n_boot)
             if method in AS_PROB and len(y):
                 pp = AS_PROB[method](p)
                 m = murphy(pp, y)
@@ -213,8 +246,6 @@ def discrimination(df: pd.DataFrame, n_boot: int = 2000) -> pd.DataFrame:
                         "uncertainty": m.uncertainty}
             out.append(row)
     res = pd.DataFrame(out)
-    RESULTS.mkdir(exist_ok=True)
-    res.to_csv(RESULTS / "discrimination.csv", index=False, float_format="%.4f")
     return res
 
 
@@ -234,16 +265,104 @@ def show_discrimination(res: pd.DataFrame, methods=("A", "D", "B", "E", "C")) ->
         print(f"== {kind}: AUROC [95% CI]\n{t.fillna('').to_string()}\n")
 
 
+def show_within(res: pd.DataFrame, methods=("A", "D", "B", "E")) -> None:
+    """Plain -> within-level AUROC per config and method, one table per kind."""
+    def cell(r):
+        if not r.reportable_within:
+            return "-"
+        return f"{r.auroc:.2f}->{r.auroc_within:.2f} [{r.auroc_within_lo:.2f},{r.auroc_within_hi:.2f}]"
+    for kind in (*ANSWERABLE, "answerable"):
+        k = res[(res.kind == kind) & res.method.isin(methods)].copy()
+        k["cell"] = k.apply(cell, axis=1)
+        t = k.pivot(index="config", columns="method", values="cell").reindex(columns=methods)
+        print(f"== {kind}: plain -> within-level AUROC [95% CI]\n{t.fillna('').to_string()}\n")
+
+
+def _answered(df: pd.DataFrame, method: str) -> pd.DataFrame:
+    d = df[(df.method == method) & df.kind.isin(ANSWERABLE) & (df.abstained == 0)
+           & df.correct.notna() & df.conf.notna()].copy()
+    d["z"] = d.groupby("config").conf.rank(pct=True)  # within-model percentile rank
+    d["cell"] = d.config + "|" + d.kind + "|" + d.level.astype(str)
+    var = d.groupby("cell").correct.transform(lambda v: 0 < v.sum() < len(v))
+    return d[var].reset_index(drop=True)  # cells with no right/wrong mix carry no information
+
+
+def _slopes(d: pd.DataFrame) -> dict[str, float]:
+    cells = pd.get_dummies(d.cell, dtype=float)
+    slopes = pd.DataFrame({k: d.z * (d.kind == k) for k in ANSWERABLE}, dtype=float)
+    X = pd.concat([cells, slopes], axis=1).to_numpy()
+    m = LogisticRegression(C=1e4, fit_intercept=False, max_iter=5000).fit(X, d.correct)
+    return dict(zip(ANSWERABLE, m.coef_[0][-len(ANSWERABLE):]))
+
+
+def regression(df: pd.DataFrame, methods=("A", "D", "B", "E", "C"), n_boot: int = 300,
+               seed: int = 0) -> pd.DataFrame:
+    rng = np.random.default_rng(seed)
+    out = []
+    for method in methods:
+        d = _answered(df, method)
+        est = _slopes(d)
+        qids = d.qid.unique()
+        by_q = d.groupby("qid").indices
+        boots = []
+        for _ in range(n_boot):  # resample questions (all models' answers to a question together)
+            take = np.concatenate([by_q[q] for q in rng.choice(qids, len(qids))])
+            b = d.iloc[take].reset_index(drop=True)
+            b["cell"] = b.cell  # duplicate questions stay in their cell
+            boots.append(_slopes(b))
+        boots = pd.DataFrame(boots)
+        for k in ANSWERABLE:
+            lo, hi = np.quantile(boots[k], [0.025, 0.975])
+            out.append({"method": method, "term": k, "slope": est[k], "lo": lo, "hi": hi,
+                        "n": int((d.kind == k).sum()), "models": d[d.kind == k].config.nunique()})
+        for k in ("perception", "computation"):
+            diff = boots[k] - boots["recall"]
+            lo, hi = np.quantile(diff, [0.025, 0.975])
+            out.append({"method": method, "term": f"{k} - recall", "slope": est[k] - est["recall"],
+                        "lo": lo, "hi": hi, "n": np.nan, "models": np.nan})
+    return pd.DataFrame(out)
+
+
+def cells(df: pd.DataFrame, min_class: int = 5) -> pd.DataFrame:
+    out = []
+    d = df[df.method.isin(CONF_METHODS) & df.kind.isin(ANSWERABLE) & (df.abstained == 0)
+           & df.correct.notna() & df.conf.notna()]
+    for (config, kind, level, method), g in d.groupby(["config", "kind", "level", "method"]):
+        y = g.correct.to_numpy()
+        n_right, n_wrong = int(y.sum()), int(len(y) - y.sum())
+        ok = n_right >= min_class and n_wrong >= min_class
+        out.append({"config": config, "kind": kind, "level": level, "method": method,
+                    "n": len(g), "acc": y.mean(), "n_right": n_right, "n_wrong": n_wrong,
+                    "auroc": auroc(g.conf, y) if ok else np.nan})
+    return pd.DataFrame(out)
+
+
+def save(res: pd.DataFrame, name: str) -> pd.DataFrame:
+    """Write a results table (only main() does, so tests never touch results/)."""
+    RESULTS.mkdir(exist_ok=True)
+    res.to_csv(RESULTS / f"{name}.csv", index=False, float_format="%.4f")
+    return res
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("command", choices=["check", "discrimination"])
+    ap.add_argument("command", choices=["check", "discrimination", "difficulty"])
     ap.add_argument("--refresh", action="store_true", help="re-read the logs")
     args = ap.parse_args()
     df = load(args.refresh)
     if args.command == "check":
         check(df)
     elif args.command == "discrimination":
-        show_discrimination(discrimination(df))
+        show_discrimination(save(discrimination(df), "discrimination"))
+    elif args.command == "difficulty":
+        show_within(save(discrimination(df), "discrimination"))
+        save(cells(df), "cells")
+        reg = save(regression(df), "regression")
+        print("== Regression: confidence slope per kind (log-odds, most vs least confident answer"
+              " in the same model x kind x level cell) [95% CI]")
+        reg["cell"] = reg.apply(lambda r: f"{r.slope:+.2f} [{r.lo:+.2f},{r.hi:+.2f}]", axis=1)
+        print(reg.pivot(index="term", columns="method", values="cell")
+              .reindex(columns=["A", "D", "B", "E", "C"]).to_string())
 
 
 if __name__ == "__main__":

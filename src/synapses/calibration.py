@@ -101,17 +101,38 @@ def auroc(p, y) -> float:
     return float(u / (n_pos * n_neg))
 
 
-def bootstrap_ci(stat, p, y, n_boot: int = 2000, level: float = 0.95,
+def stratified_auroc(p, y, strata) -> float:
+    """AUROC counting only (correct, incorrect) pairs from the same stratum.
+
+    With strata = difficulty levels, this asks whether confidence separates right from wrong
+    answers among questions of equal difficulty, removing the part of plain AUROC that comes
+    from confidence tracking the level. Equals the pair-weighted mean of per-stratum AUROCs.
+    NaN if no stratum has both classes.
+    """
+    p, y = _arrays(p, y, unit=False)
+    strata = np.asarray(strata)
+    u_sum = pairs = 0.0
+    for s in np.unique(strata):
+        m = strata == s
+        n_pos = int((y[m] == 1).sum())
+        n_neg = int(m.sum()) - n_pos
+        if n_pos and n_neg:
+            u_sum += auroc(p[m], y[m]) * n_pos * n_neg
+            pairs += n_pos * n_neg
+    return float(u_sum / pairs) if pairs else float("nan")
+
+
+def bootstrap_ci(stat, *arrays, n_boot: int = 2000, level: float = 0.95,
                  seed: int = 0) -> tuple[float, float]:
-    """Percentile bootstrap interval for ``stat(p, y)``, resampling (p, y) pairs.
+    """Percentile bootstrap interval for ``stat(*arrays)``, resampling rows of the arrays
+    together (e.g. ``bootstrap_ci(auroc, p, y)``).
 
     Resamples where the statistic is undefined (e.g. AUROC with one class) are dropped.
     """
-    p = np.asarray(p, dtype=float)
-    y = np.asarray(y, dtype=float)
+    arrays = [np.asarray(a) for a in arrays]
     rng = np.random.default_rng(seed)
-    idx = rng.integers(0, len(p), size=(n_boot, len(p)))
-    vals = np.array([stat(p[i], y[i]) for i in idx])
+    idx = rng.integers(0, len(arrays[0]), size=(n_boot, len(arrays[0])))
+    vals = np.array([stat(*(a[i] for a in arrays)) for i in idx])
     vals = vals[~np.isnan(vals)]
     if len(vals) == 0:
         return float("nan"), float("nan")
