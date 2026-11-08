@@ -28,6 +28,8 @@ Task options (-T):
   k_samples         B samples (default 10)
   main_temperature  temperature of P/A/D/C/F (default 0; null = provider default, needed for
                     models that only accept their default, e.g. reasoning models)
+  sample_temperature  temperature of the B/FB samples (default 1; null = provider default: Claude
+                    rejects any temperature since API version 2026-10-21)
   max_tokens        per call (default 1024; raise for thinking models)
   no_think          Qwen3-style thinking off via the chat template (vLLM models only)
   base              base-model mode (see above)
@@ -222,7 +224,7 @@ _LOGPROB_FAILS: dict[str, int] = {}
 
 @solver
 def elicit(methods: list[str], k_samples: int, main_temperature: float | None,
-           max_tokens: int, no_think: bool, base: bool):
+           max_tokens: int, no_think: bool, base: bool, sample_temperature: float | None = 1.0):
     extra = {"chat_template_kwargs": {"enable_thinking": False}} if no_think else None
 
     def cfg(temperature: float | None, logprobs: bool = False) -> GenerateConfig:
@@ -280,7 +282,7 @@ def elicit(methods: list[str], k_samples: int, main_temperature: float | None,
                                      criteria=m["resolution_criteria"])
             f, *fb = await asyncio.gather(
                 ask(model, prompt, main_temperature),
-                *[ask(model, prompt, 1.0) for _ in range(k_samples if "b" in methods else 0)])
+                *[ask(model, prompt, sample_temperature) for _ in range(k_samples if "b" in methods else 0)])
             calls["F"] = with_json(f, "probability")
             calls["FB"] = [with_json(r, "probability") for r in fb]
         else:
@@ -288,7 +290,7 @@ def elicit(methods: list[str], k_samples: int, main_temperature: float | None,
             jobs: dict[str, Any] = {"P": ask(model, p_prompt, main_temperature, logprobs=True)}
             if "b" in methods:
                 for i in range(k_samples):
-                    jobs[f"B{i}"] = ask(model, p_prompt, 1.0)
+                    jobs[f"B{i}"] = ask(model, p_prompt, sample_temperature)
             if not base:
                 if "a" in methods:
                     jobs["A"] = ask(model, PROMPT_A.format(q=text), main_temperature)
@@ -683,6 +685,7 @@ def confidence_audit(
     methods: str = "p,b,a,d,c",
     k_samples: int = 10,
     main_temperature: float | None = 0.0,
+    sample_temperature: float | None = 1.0,
     max_tokens: int = 1024,
     no_think: bool = False,
     base: bool = False,
@@ -694,8 +697,10 @@ def confidence_audit(
         raise ValueError(f"unknown methods {unknown}; choose from p,b,a,d,c")
     return Task(
         dataset=load_questions(questions, categories, per_category, base),
-        solver=elicit(ms, k_samples, main_temperature, max_tokens, no_think, base),
+        solver=elicit(ms, k_samples, main_temperature, max_tokens, no_think, base,
+                      sample_temperature),
         scorer=confidence_scorer(judge=judge),
         metadata={"methods": ms, "k_samples": k_samples, "main_temperature": main_temperature,
+                  "sample_temperature": sample_temperature,
                   "no_think": no_think, "base": base},
     )
