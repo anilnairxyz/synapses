@@ -41,3 +41,20 @@ uv run --extra evals inspect score <log.eval> \
 **Foundry (office):** `run_foundry.sh`, `confidence_task.py` and `questions.jsonl` are copied into the office repo's `confidence/` folder (the synapses copies are the source; re-copy after changes). There: `confidence/run_foundry.sh pilot|full [configs]` runs grok-4-1-fast, gpt-4o and gpt-5-nano (generation only; phi-4-mini was dropped after the pilot as too slow on Foundry) into `outputs/confidence/<mode>/<config>/`. The logs are copied into `runs/foundry/<mode>/<config>/` here and judged on the 4090 with `judge_4090.sh foundry`, so every model has the same validated judge.
 
 **Dry run (Mac):** `uv run --extra evals inspect eval experiments/epic2/phase1_confidence/confidence_task.py --model mockllm/model -T per_category=2 -T k_samples=2`.
+
+## Phase 1B: internal-state probes
+
+Plan: [`docs/epic2_phase1b_plan_08-11-2026.md`](../../../docs/epic2_phase1b_plan_08-11-2026.md). The Phase 1 questions are the test set; the probes train on a separate set.
+
+- `build_train_questions.py`: Step 2. Builds `data/epic2/confidence/train_questions.jsonl` (5,995 answerable questions from the same generators, no overlap with the test set; committed with `git add -f`).
+- `run_4090.sh train`: Step 3. Plain answer (P) only on the training set for qwen3-8b, qwen3-1.7b and qwen3-8b-base; logs in `runs/4090/train/<config>/`. Then `judge_4090.sh 4090/train`.
+- `extract_states.py`: Step 4. Hidden states at four positions (end of question, end of prompt, last answer token, mean over the answer) at every layer, from one forward pass on prompt + logged answer. Writes `states/<config>/<split>.npy|.parquet` (gitignored; about 8 GB per model). `--limit 20` is the smoke test (prints the positions and checks HF greedy answers against the logged ones, saves nothing).
+
+**4090 order (WSL, repo root):**
+
+```bash
+uv run --extra evals --extra interp python experiments/epic2/phase1_confidence/extract_states.py qwen3-8b --splits test --limit 20   # smoke test
+experiments/epic2/phase1_confidence/run_4090.sh train
+experiments/epic2/phase1_confidence/judge_4090.sh 4090/train
+uv run --extra evals --extra interp python experiments/epic2/phase1_confidence/extract_states.py qwen3-8b qwen3-1.7b qwen3-8b-base
+```
