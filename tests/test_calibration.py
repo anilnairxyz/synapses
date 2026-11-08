@@ -3,6 +3,7 @@ import pytest
 
 from synapses.calibration import (
     auroc,
+    bootstrap_ci,
     brier,
     ece,
     murphy,
@@ -56,6 +57,17 @@ def test_auroc_extremes_and_ties():
     assert auroc([0.1, 0.2, 0.8, 0.9], [1, 1, 0, 0]) == 0
     assert auroc([0.5] * 4, [1, 0, 1, 0]) == pytest.approx(0.5)
     assert np.isnan(auroc([0.5, 0.6], [1, 1]))
+    assert auroc([-0.1, -0.2, -3.0, -5.0], [1, 1, 0, 0]) == 1  # any score, e.g. logprobs
+    assert auroc([4, 2, 2, 0], [1, 1, 0, 0]) == pytest.approx(0.875)  # counts, with a tie
+
+
+def test_bootstrap_ci():
+    rng = np.random.default_rng(0)
+    p = rng.random(300)
+    y = (rng.random(300) < p).astype(int)
+    lo, hi = bootstrap_ci(auroc, p, y, n_boot=500)
+    assert lo < auroc(p, y) < hi and hi - lo < 0.2
+    assert all(np.isnan(bootstrap_ci(auroc, [0.5, 0.6], [1, 1], n_boot=50)))
 
 
 def test_auroc_matches_sklearn():

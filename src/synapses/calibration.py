@@ -10,14 +10,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
+from scipy.stats import rankdata
 
 
-def _arrays(p, y) -> tuple[np.ndarray, np.ndarray]:
+def _arrays(p, y, unit: bool = True) -> tuple[np.ndarray, np.ndarray]:
     p = np.asarray(p, dtype=float)
     y = np.asarray(y, dtype=float)
     if p.shape != y.shape or p.ndim != 1:
         raise ValueError(f"p and y must be 1-D and equal length, got {p.shape} vs {y.shape}")
-    if np.any((p < 0) | (p > 1)):
+    if unit and np.any((p < 0) | (p > 1)):
         raise ValueError("confidences must lie in [0, 1]")
     return p, y
 
@@ -87,27 +88,35 @@ def auroc(p, y) -> float:
     """Probability a random correct answer has higher confidence than a random incorrect one.
 
     Ties count half (Mann-Whitney U). Returns NaN if only one class is present.
-    0.5 = confidence carries no information about correctness.
+    0.5 = confidence carries no information about correctness. Only the ranking of ``p``
+    matters, so any score works (log-probabilities, counts), not just values in [0, 1].
     """
-    p, y = _arrays(p, y)
-    pos, neg = p[y == 1], p[y == 0]
-    if len(pos) == 0 or len(neg) == 0:
+    p, y = _arrays(p, y, unit=False)
+    n_pos = int((y == 1).sum())
+    n_neg = len(y) - n_pos
+    if n_pos == 0 or n_neg == 0:
         return float("nan")
-    # Rank-based U statistic; average ranks handle ties.
-    order = np.argsort(np.concatenate([pos, neg]), kind="mergesort")
-    allv = np.concatenate([pos, neg])[order]
-    ranks = np.empty(len(allv))
-    i = 0
-    while i < len(allv):
-        j = i
-        while j + 1 < len(allv) and allv[j + 1] == allv[i]:
-            j += 1
-        ranks[i : j + 1] = (i + j) / 2 + 1
-        i = j + 1
-    r = np.empty(len(allv))
-    r[order] = ranks
-    u = r[: len(pos)].sum() - len(pos) * (len(pos) + 1) / 2
-    return float(u / (len(pos) * len(neg)))
+    ranks = rankdata(p)  # average ranks handle ties
+    u = ranks[y == 1].sum() - n_pos * (n_pos + 1) / 2
+    return float(u / (n_pos * n_neg))
+
+
+def bootstrap_ci(stat, p, y, n_boot: int = 2000, level: float = 0.95,
+                 seed: int = 0) -> tuple[float, float]:
+    """Percentile bootstrap interval for ``stat(p, y)``, resampling (p, y) pairs.
+
+    Resamples where the statistic is undefined (e.g. AUROC with one class) are dropped.
+    """
+    p = np.asarray(p, dtype=float)
+    y = np.asarray(y, dtype=float)
+    rng = np.random.default_rng(seed)
+    idx = rng.integers(0, len(p), size=(n_boot, len(p)))
+    vals = np.array([stat(p[i], y[i]) for i in idx])
+    vals = vals[~np.isnan(vals)]
+    if len(vals) == 0:
+        return float("nan"), float("nan")
+    a = (1 - level) / 2
+    return float(np.quantile(vals, a)), float(np.quantile(vals, 1 - a))
 
 
 def selective_curve(p, y) -> tuple[np.ndarray, np.ndarray]:

@@ -1,8 +1,14 @@
 """Step 3: analysis of the judged Confidence Audit logs. No model calls.
 
-Part 1 (this file so far): `load()` turns every full-run log under runs/<source>/full/<config>/
-into one tidy table, one row per (config, question, method), cached in results/rows.parquet.
-Everything else in Step 3 is computed from that table.
+Part 1: `load()` turns every full-run log under runs/<source>/full/<config>/ into one tidy
+table, one row per (config, question, method), cached in results/rows.parquet. Everything else
+in Step 3 is computed from that table.
+
+Part 2: `discrimination()`, per (config, answerable kind, confidence method), on answered
+questions only (abstentions are reported as a rate): accuracy, AUROC with a bootstrap 95%
+interval, and for methods that give a probability, Brier, its Murphy decomposition and ECE.
+AUROC is marked reportable only with at least MIN_CLASS right and MIN_CLASS wrong answers.
+Written to results/discrimination.csv.
 
 Methods (rows), and which answer each row's `correct` refers to:
   P        the plain answer (no confidence of its own; carries accuracy and abstention)
@@ -20,20 +26,27 @@ Methods (rows), and which answer each row's `correct` refers to:
            holds the outcome (0/1), so Brier etc. apply directly
 
 Columns: source, config, qid, category, kind, level, method, answer, label, correct (0/1/NaN),
-abstained (0/1/NaN), conf.
+abstained (0/1/NaN), conf, preamble.
   kind     computation, perception, recall, false_premise, ambiguous, unknowable, forecastable
   label    the grader's label (CORRECT / INCORRECT / ABSTAINS / CORRECTS_PREMISE / ...);
            ERROR / UNPARSED when the call failed or its reply couldn't be read
   correct  1 if the label is the right answer or right behaviour for the kind, NaN if no label
+  preamble A and D only: the reply has text before its JSON (code fences aside), against the
+           prompt's "Reply with only a JSON object". Only Claude Haiku does this: it works
+           computation out first (86% of A, 73% of D replies), so its D is not confidence
+           *before* answering there, and on ill-posed items a clarification can sit in the
+           preamble while the judged JSON answer picks one work.
 
 Usage (repo root):
   uv run --extra evals python experiments/epic2/phase1_confidence/analyze.py check
+  uv run --extra evals python experiments/epic2/phase1_confidence/analyze.py discrimination
 """
 
 from __future__ import annotations
 
 import argparse
 import glob
+import re
 import sys
 from pathlib import Path
 
@@ -45,10 +58,18 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import confidence_task as ct  # noqa: E402
 
+from synapses.calibration import auroc, bootstrap_ci, brier, ece, murphy  # noqa: E402
+
 RUNS = HERE / "runs"
 RESULTS = HERE / "results"
 ROWS = RESULTS / "rows.parquet"
 THRESHOLDS = ("0.0", "0.5", "0.75", "0.9")
+ANSWERABLE = ("computation", "perception", "recall")
+CONF_METHODS = ("A", "D", "B", "E", "E_mean", "E_min", "C")
+# Methods whose confidence is (or maps to) a probability of being right, so calibration
+# applies. E's sum of logprobs is log P(whole answer).
+AS_PROB = {"A": lambda c: c, "D": lambda c: c, "B": lambda c: c, "E": np.exp}
+MIN_CLASS = 10
 
 
 def _ok(kind: str, label: str | None) -> float:
@@ -62,6 +83,13 @@ def _abstained(label: str | None) -> float:
     return np.nan if label is None or label in ct.NO_LABEL else float(label == "ABSTAINS")
 
 
+def has_preamble(text: str | None) -> bool | None:
+    """True if a JSON reply has text before the object (markdown code fences don't count)."""
+    t = re.sub(r"```(?:json)?", "", text or "")
+    i = t.find("{")
+    return None if i < 0 else bool(t[:i].strip())
+
+
 def sample_rows(source: str, config: str, s) -> list[dict]:
     """The rows for one logged sample (question)."""
     q = s.metadata["q"]
@@ -71,10 +99,11 @@ def sample_rows(source: str, config: str, s) -> list[dict]:
     base = {"source": source, "config": config, "qid": s.id, "category": q["category"],
             "kind": kind, "level": q["level"]}
 
-    def row(method, answer=None, label=None, correct=np.nan, abstained=np.nan, conf=np.nan):
+    def row(method, answer=None, label=None, correct=np.nan, abstained=np.nan, conf=np.nan,
+            preamble=None):
         return base | {"method": method, "answer": answer, "label": label,
                        "correct": correct, "abstained": abstained,
-                       "conf": np.nan if conf is None else float(conf)}
+                       "conf": np.nan if conf is None else float(conf), "preamble": preamble}
 
     if q["category"] == "forecastable":
         y = float(q["meta"]["outcome"])
@@ -97,7 +126,8 @@ def sample_rows(source: str, config: str, s) -> list[dict]:
         if m in calls:
             lab = labels[m]
             rows.append(row(m, answer=calls[m].get("answer"), label=lab, correct=_ok(kind, lab),
-                            abstained=_abstained(lab), conf=calls[m].get("confidence")))
+                            abstained=_abstained(lab), conf=calls[m].get("confidence"),
+                            preamble=has_preamble(calls[m].get("text"))))
     if calls.get("C"):
         answered = []
         for t in THRESHOLDS:
@@ -157,14 +187,63 @@ def check(df: pd.DataFrame) -> None:
     print(bad.groupby(["config", "method"]).size().to_string() if len(bad) else "none")
 
 
+def discrimination(df: pd.DataFrame, n_boot: int = 2000) -> pd.DataFrame:
+    """One row per (config, kind, method) over the answerable kinds, plus their union
+    ("answerable"; its AUROC also rewards confidence that differs between categories)."""
+    d = df[df.method.isin(CONF_METHODS) & df.kind.isin(ANSWERABLE) & df.correct.notna()]
+    out = []
+    for (config, method), g in d.groupby(["config", "method"]):
+        for kind, h in [*((k, g[g.kind == k]) for k in ANSWERABLE), ("answerable", g)]:
+            a = h[(h.abstained == 0) & h.conf.notna()]
+            p, y = a.conf.to_numpy(), a.correct.to_numpy()
+            n_right, n_wrong = int(y.sum()), int(len(y) - y.sum())
+            row = {"config": config, "kind": kind, "method": method, "n": len(h),
+                   "abstain": h.abstained.mean(), "n_answered": len(a), "n_right": n_right,
+                   "n_wrong": n_wrong, "acc": y.mean() if len(y) else np.nan,
+                   "reportable": n_right >= MIN_CLASS and n_wrong >= MIN_CLASS,
+                   "auroc": auroc(p, y) if len(y) else np.nan, "auroc_lo": np.nan,
+                   "auroc_hi": np.nan}
+            if row["reportable"]:
+                row["auroc_lo"], row["auroc_hi"] = bootstrap_ci(auroc, p, y, n_boot=n_boot)
+            if method in AS_PROB and len(y):
+                pp = AS_PROB[method](p)
+                m = murphy(pp, y)
+                row |= {"mean_conf": pp.mean(), "brier": brier(pp, y), "ece": ece(pp, y),
+                        "reliability": m.reliability, "resolution": m.resolution,
+                        "uncertainty": m.uncertainty}
+            out.append(row)
+    res = pd.DataFrame(out)
+    RESULTS.mkdir(exist_ok=True)
+    res.to_csv(RESULTS / "discrimination.csv", index=False, float_format="%.4f")
+    return res
+
+
+def show_discrimination(res: pd.DataFrame, methods=("A", "D", "B", "E", "C")) -> None:
+    """AUROC [95% interval] per config and method, one table per kind; '-' = too few right
+    or wrong answers (n_right/n_wrong shown)."""
+    def cell(r):
+        if not r.reportable:
+            return f"- ({r.n_right}/{r.n_wrong})"
+        return f"{r.auroc:.2f} [{r.auroc_lo:.2f},{r.auroc_hi:.2f}]"
+    for kind in (*ANSWERABLE, "answerable"):
+        k = res[(res.kind == kind) & res.method.isin(methods)].copy()
+        k["cell"] = k.apply(cell, axis=1)
+        t = k.pivot(index="config", columns="method", values="cell").reindex(columns=methods)
+        acc = res[(res.kind == kind) & (res.method == "B")].set_index("config").acc
+        t.insert(0, "acc (P, answered)", acc.round(2))
+        print(f"== {kind}: AUROC [95% CI]\n{t.fillna('').to_string()}\n")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("command", choices=["check"])
+    ap.add_argument("command", choices=["check", "discrimination"])
     ap.add_argument("--refresh", action="store_true", help="re-read the logs")
     args = ap.parse_args()
     df = load(args.refresh)
     if args.command == "check":
         check(df)
+    elif args.command == "discrimination":
+        show_discrimination(discrimination(df))
 
 
 if __name__ == "__main__":

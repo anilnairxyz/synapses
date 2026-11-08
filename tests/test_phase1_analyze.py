@@ -23,7 +23,8 @@ def by_method(rows):
 def test_answerable_rows():
     q = {"id": "rec-1", "category": "recall", "level": 3, "meta": {}}
     calls = {"P": {"answer": "X", "lp": {"sum": -0.5, "mean": -0.1, "min": -0.4}},
-             "A": {"answer": "Y", "confidence": 0.9}, "D": {"answer": "X", "confidence": 0.6},
+             "A": {"answer": "Y", "confidence": 0.9, "text": '```json\n{"answer": "Y"}```'},
+             "D": {"answer": "X", "confidence": 0.6, "text": '6 x 7 = 42. {"confidence": 0.6}'},
              "C": {t: {"answer": a} for t, a in zip(analyze.THRESHOLDS, ["X", "X", "IDK", "IDK"])}}
     labels = {"P": "CORRECT", "A": "INCORRECT", "D": "CORRECT", "C0.0": "CORRECT",
               "C0.5": "CORRECT", "C0.75": "ABSTAINS", "C0.9": "ABSTAINS"}
@@ -32,6 +33,7 @@ def test_answerable_rows():
     assert r["A"]["correct"] == 0 and r["A"]["conf"] == 0.9  # A is scored on its own answer
     assert r["B"]["correct"] == 1 and r["B"]["conf"] == 0.7  # B and E on P's answer
     assert r["E"]["conf"] == -0.5 and r["E_min"]["conf"] == -0.4
+    assert r["A"]["preamble"] is False and r["D"]["preamble"] is True  # fences don't count
     assert r["C"]["conf"] == 2 and r["C"]["correct"] == 1  # answers at t=0 and .5; scored at t=0
     assert r["C0.9"]["abstained"] == 1 and r["C0.9"]["correct"] == 0
 
