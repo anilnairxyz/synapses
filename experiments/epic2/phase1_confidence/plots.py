@@ -51,10 +51,15 @@ plt.rcParams.update({
 })
 
 
-def caption(fig, text: str, y: float = -0.04) -> None:
-    """Small grey note under the figure, wrapped to the figure's width."""
+def caption(fig, text: str, y: float = -0.04, keep_lines: bool = False) -> None:
+    """Small grey note under the figure, wrapped to the figure's width.
+
+    keep_lines: wrap each "\n"-separated line on its own, so line breaks survive.
+    """
     width = int(fig.get_figwidth() * 15)
-    fig.text(0.01, y, textwrap.fill(text, width), fontsize=8.5, color=INK2, ha="left", va="top")
+    lines = text.split("\n") if keep_lines else [text]
+    body = "\n".join(textwrap.fill(line, width) for line in lines)
+    fig.text(0.01, y, body, fontsize=8.5, color=INK2, ha="left", va="top")
 
 
 def save(fig, name: str) -> None:
@@ -88,7 +93,8 @@ def auroc_heatmap() -> None:
             for j in range(len(methods)):
                 v = grid[i, j]
                 if np.isnan(v):
-                    ax.text(j, i, "–", ha="center", va="center", color=MUTED)
+                    mark = "–" if (models[i], methods[j]) in k.index else "n/a"
+                    ax.text(j, i, mark, ha="center", va="center", fontsize=8, color=MUTED)
                 else:
                     ax.text(j, i, f"{v:.2f}", ha="center", va="center", fontsize=9,
                             color="white" if abs(v - 0.6) > 0.25 else INK)
@@ -106,8 +112,10 @@ def auroc_heatmap() -> None:
                  x=0.01, ha="left", fontweight="bold")
     caption(fig, "Within-level AUROC: 0.5 = no information, 1 = every right answer "
              "more confident than every wrong one. A stated after, D stated before, B sample "
-             "agreement, E token probability.\n– = fewer than 10 right or 10 wrong answers, or "
-             "the method isn't available for the model.")
+             "agreement, E token probability.\nn/a = method not available for the model "
+             "(no stated confidence from the base model; no token probabilities from GPT-5 nano or Claude Haiku).\n"
+             "– = method ran, but fewer than 10 right or 10 wrong answers within levels "
+             "(the model was nearly always right).", keep_lines=True)
     fig.tight_layout()
     save(fig, "auroc_within")
 
