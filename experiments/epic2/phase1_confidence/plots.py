@@ -93,7 +93,13 @@ def auroc_heatmap() -> None:
             for j in range(len(methods)):
                 v = grid[i, j]
                 if np.isnan(v):
-                    mark = "–" if (models[i], methods[j]) in k.index else "n/a"
+                    key = (models[i], methods[j])
+                    if key not in k.index:
+                        mark = "n/a"  # method not available for this model
+                    elif k.loc[key, "n_wrong_within"] < 10:
+                        mark = "✓"  # nearly always right: too few errors to measure
+                    else:
+                        mark = "–"  # too few right answers
                     ax.text(j, i, mark, ha="center", va="center", fontsize=8, color=MUTED)
                 else:
                     ax.text(j, i, f"{v:.2f}", ha="center", va="center", fontsize=9,
@@ -114,8 +120,8 @@ def auroc_heatmap() -> None:
              "more confident than every wrong one. A stated after, D stated before, B sample "
              "agreement, E token probability.\nn/a = method not available for the model "
              "(no stated confidence from the base model; no token probabilities from GPT-5 nano or Claude Haiku).\n"
-             "– = method ran, but fewer than 10 right or 10 wrong answers within levels "
-             "(the model was nearly always right).", keep_lines=True)
+             "✓ = nearly always right: fewer than 10 wrong answers within levels, too few to measure "
+             "whether confidence picks them out.", keep_lines=True)
     fig.tight_layout()
     save(fig, "auroc_within")
 
