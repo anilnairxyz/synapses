@@ -26,8 +26,8 @@ Candidate explanations for the gap between what the model represents and what it
 | Experiment | Tests | Main prediction (written before the runs) |
 | --- | --- | --- |
 | E1 Stereotype analysis | 6 | Within a level, stated confidence (A, D) is predicted at least as well by the question's details as by the hidden-state probe; on perception, by neither |
-| E2 Swap | 5 (and 1) | Asked about an answer placed in its own mouth, the model is nearly as sure of a wrong answer as of the right one, while the probe on the same answer tells them apart |
-| E3 Elicitation | 3 (and 2, via the base model) | P(True) beats stated confidence within levels on every kind but stays below the probe; the gap to the probe is largest on perception |
+| E2 Swap | 5 (and 1) | Asked about an answer placed in its own mouth, the model is nearly as sure of a wrong answer as of the right one, while the probe on the same answer tells them apart. Ownership bias (Sanz-Guerrero et al.) replicates and is largest on perception |
+| E3 Elicitation | 3 (and 2, via the base model) | P(True) and user framing beat stated confidence within levels on every kind but stay below the probe; the gap to the probe is largest on perception |
 
 ## Study (Step 1)
 
@@ -36,7 +36,10 @@ Before any code, check what is already known, and record it here:
 - **Ji et al. 2025**, *Calibrating Verbal Uncertainty as a Linear Feature to Reduce Hallucinations*: verbal uncertainty as one direction, separate from the model's actual uncertainty, steered. Closest prior work to hypotheses 1 and 3; confirm the claim and what it leaves open.
 - **Kadavath et al. 2022**: P(True) exactly as they defined it (prompt, few-shot, which token), so E3 reproduces it.
 - **Lin, Hilton & Evans 2022**, *Teaching Models to Express Their Uncertainty in Words*: the fine-tuning evidence for hypothesis 4 (stretch).
-- A search for prior work that puts a different answer in the model's mouth and asks for its confidence (self-attribution, prefill, self-preference), so E2's novelty is stated, not assumed.
+- **Sanz-Guerrero, Mager & von der Wense 2026**, [*Large Language Models Are Overconfident in Their Own Responses*](https://arxiv.org/abs/2606.03437) (Findings of ACL 2026). Found by the user, 2026-11-12. Six open-weight models, three benchmarks, three elicitation methods: models give up to 26% higher confidence to their own answers than to identical answers attributed to the user ("ownership bias"); instruction tuning hurts calibration and the chat template makes it worse; reframing the answer as user input narrows the base vs instruct calibration gap. **This covers E2's attribution factor and part of hypothesis 2.** To read in full: their benchmarks and question types, whether they vary correctness or only measure calibration, and which elicitation methods.
+- A search for further prior work that puts a different answer in the model's mouth and asks for its confidence (prefill, self-preference), so E2's novelty is stated, not assumed.
+
+**What changes after Sanz-Guerrero et al.** (subject to the full read). Self vs other attribution is no longer a contribution; it stays in E2 as a replication, because what is new is around it: (a) correctness varied by construction, so E2 measures whether confidence *separates* a right from a wrong answer, not only its level; (b) by kind of question with difficulty fixed, where the prediction is that ownership matters most where the model has no internal access (perception); (c) the probe on the same answers, which says whether the model's state knows the answer is wrong regardless of who is said to have given it. Their fix (frame the answer as the user's) becomes a readout in E3, tested against P(True) and the probe ceiling on computation and perception, which their benchmarks may not cover.
 
 Output: a short "what we add" paragraph, and any change to E1 to E3.
 
@@ -55,7 +58,7 @@ For every config with stated confidence: within level × task type, how well doe
 Each question is asked as a fresh conversation in which the answer is already given, then the model is asked for its confidence. Two factors, crossed:
 
 - **Answer:** the model's own Phase 1 P answer; the **correct** answer; a **plausible wrong** answer, different from the model's own.
-- **Attribution:** *self* (the answer sits in the assistant turn, then the user asks "What is the probability, from 0 to 1, that your answer is correct?") vs *other* ("Someone answered X. What is the probability that this answer is correct?").
+- **Attribution:** *self* (the answer sits in the assistant turn, then the user asks "What is the probability, from 0 to 1, that your answer is correct?") vs *user* (the user says "My answer is X. What is the probability that it is correct?"), matching Sanz-Guerrero et al.'s framing so the ownership effect is a direct replication.
 
 Wrong answers are built to be plausible and certainly wrong:
 
@@ -65,7 +68,7 @@ Wrong answers are built to be plausible and certainly wrong:
 
 Right and wrong are known by construction, so only the model's own answers need Phase 1's labels; no new judging.
 
-**Measures.** Mean confidence per cell; paired difference correct − wrong per question, and within-level AUROC of confidence for correct vs wrong answers. Rationalisation predicts a small difference under *self* and a larger one under *other*.
+**Measures.** Mean confidence per cell; paired difference correct − wrong per question, and within-level AUROC of confidence for correct vs wrong answers. Rationalisation predicts a small difference under *self* and a larger one under *user*.
 
 **Probe on the same answers.** Teacher-force the P prompt plus the correct or the wrong answer in the assistant turn: the same format the after-answer probe was trained on, with only the answer's source changed. Score with the Phase 1B after-answer probe. If the probe separates correct from wrong where the words do not, that is the knowing-vs-saying gap in one controlled experiment. Caveat (from Phase 1B): after-answer states encode the answer itself, so the layer-0 control is reported alongside.
 
@@ -76,6 +79,7 @@ Readouts of confidence in the model's own P answer, compared within levels again
 - **A**: stated with the answer (Phase 1, existing).
 - **Post-hoc verbal**: the *self / own answer* cell of E2.
 - **P(True)**: question plus the model's answer, "Is the proposed answer correct? (A) True (B) False", probability on True, following Kadavath et al. (one forward pass; open models, and API models with logprobs).
+- **User framing** (Sanz-Guerrero et al.'s fix): the *user / own answer* cell of E2.
 - **P(True), base model**: few-shot, which tests hypothesis 2 against the instruct model's P(True).
 
 If one readout closes most of the gap to the probe, that is the usable result: which readout to trust, by kind of question. If none does, the information is there but asking cannot reach it.
