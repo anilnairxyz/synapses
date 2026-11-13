@@ -84,14 +84,22 @@ Readouts of confidence in the model's own P answer, compared within levels again
 
 If one readout closes most of the gap to the probe, that is the usable result: which readout to trust, by kind of question. If none does, the information is there but asking cannot reach it.
 
+### From the sprint talks
+
+Proposed additions after Navaie's talk (2026-11-13; notes in the [sprint brief](epic2_sprint_brief_13-11-2026.md#talk-notes)), to review at the study step:
+
+- **Report the tail as well as AUROC.** AUROC is an average; the safety-relevant number is how often a wrong answer comes with high confidence. For every readout in E2 and E3 (and Phase 1's A, D, B, E for reference): the share of wrong answers with confidence ≥ 0.9, and the share of answers given ≥ 0.9 that are wrong, by kind of question, with bootstrap intervals. For the probe, the same at the threshold that matches the readout's rate of ≥ 0.9 answers, so the comparison is fair. Phase 1 suggests this will be stark for Qwen3-8B, which states ≥ 0.9 almost always.
+- **State reliance conditions.** The "which readout to trust" result is stated with its limits: which models (small open Qwen3, thinking off; API models only if run), which kinds of question, which difficulty range, and what would change the conclusion.
+- **Say how we tried to break the claim.** A short section in the report: every pre-registered prediction with its outcome, failed ones included; the controls (layer-0 probe, difficulty held fixed, wrong answers by construction, the question-details probe); and the checks that could have overturned the main claim.
+
 ## Steps
 
 1. **Study** (Thu 12 Nov). Above. *Gate: approve the plan after the study.*
 2. **E1** (Mac, Thu 12 Nov). `analyze_stereotype.py`, table and figure. Free, and a finding to bring to the sprint.
 3. **Build** (Mac). New folder `experiments/epic2/phase2_confidence_gap/`: `build_swaps.py` (wrong answers by construction, written to `data/epic2/confidence/swaps.jsonl`), an Inspect task for E2's conversations and P(True) (reusing Phase 1's prompts and grading), and `extract_states.py --answers` to teacher-force given answers. Unit tests on the wrong-answer builders (always wrong, always different from the correct and the own answer, plausible length).
 4. **4090 smoke runs** (`--limit`), then the full runs: E2 for three configs (base: P(True) only), E3 P(True) on test and training sets, extraction for E2's answers.
-5. **Analysis and figures.** Paired bootstrap CIs; a `verify.py` that recomputes every number in the report from the committed tables.
-6. **Report.** On the official template, 4 to 8 pages (hard cap) plus references and appendices, including the required Limitations and Dual-Use / Ethical Considerations appendix. Preexisting code is marked in the README (done for `phase1_confidence/`) and in the report. Also: key figure on page 1, related work stating exactly what is new, limitations, LLM usage statement, pre-registered predictions with outcomes, public code and data. State plainly that Phases 1 and 1B were done before the sprint. Then a third lifeandtimes post.
+5. **Analysis and figures.** Paired bootstrap CIs; the tail measures (confident wrong answers); a `verify.py` that recomputes every number in the report from the committed tables.
+6. **Report.** On the official template, 4 to 8 pages (hard cap) plus references and appendices, including the required Limitations and Dual-Use / Ethical Considerations appendix. Preexisting code is marked in the README (done for `phase1_confidence/`) and in the report. Also: key figure on page 1, related work stating exactly what is new, limitations, LLM usage statement, pre-registered predictions with outcomes, a "how we tried to break it" section and reliance conditions (see *From the sprint talks*), public code and data. State plainly that Phases 1 and 1B were done before the sprint. Then a third lifeandtimes post.
 
 **Stretch, only once E1 to E3 are done:** steering along the probe direction to see whether stated confidence follows (hypothesis 1); a small LoRA on Qwen3-1.7B to state confidence against correctness labels (hypothesis 4).
 

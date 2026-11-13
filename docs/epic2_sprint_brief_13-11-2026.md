@@ -62,6 +62,12 @@ RSVP to each on Luma to get the Zoom link and a reminder; nobody is added automa
 
 The user plans to attend most talks, so the work plan keeps those slots free of tasks that need them (4090 runs can go in the background).
 
+## Talk notes
+
+**Navaie, Fri 13 Nov 15:15: "When should we trust an AI safety claim?"** Paper: Navaie, K. (2026), *Epistemic norms for AI safety and alignment research*, Artificial Intelligence Review, [doi 10.1007/s10462-026-11666-8](https://doi.org/10.1007/s10462-026-11666-8). Safety evidence differs from capability evidence on two axes: it must show absence (what the system will not do, even when pushed) rather than presence, and the tail rather than the mean ("in safety, the 0.1% may be the whole story"). Five places where evidence can fail: target (hunting failures or optimising the mean), visibility, independent verification, unknowns, culture. A pilot of 10 alignment papers found 0/10 with independent verification of the central claim but 9/10 with a substantive limitations section: "acknowledging uncertainty ≠ engineering a process that can detect error". ECAISA (Epistemic Code for AI Safety and Alignment, eight principles) in four moves: make evidence inspectable; make claims earn their strength; try to break the claim; separate evidence, assumptions and conjecture and state reliance conditions. The target is auditability, not certification.
+
+*For our report:* stated confidence is exactly the kind of unchecked evidence the talk is about, so cite it in the theory of change. Three additions to Phase 2 follow from it (see the [plan](epic2_phase2_plan_12-11-2026.md#from-the-sprint-talks)): report the tail (confident wrong answers), state reliance conditions, and say how we tried to break the claim.
+
 ## Where things are
 
 - **Sprint page tabs:** Overview (tracks, prizes), Resources (reading, example projects and datasets by track; check before looking elsewhere), Guidelines (rules, rubric, template, FAQ), Schedule (talks and recordings).
