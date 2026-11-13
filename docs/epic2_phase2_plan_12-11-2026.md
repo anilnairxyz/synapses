@@ -1,6 +1,6 @@
 # Epic 2 · Phase 2 — Why Confidence Reports Miss What the Model Knows (Sprint Plan)
 
-Follows [Phase 1](epic2_phase1_plan_03-11-2026.md) ([results](../experiments/epic2/phase1_confidence/RESULTS.md)) and [Phase 1B](epic2_phase1b_plan_08-11-2026.md) ([results](../experiments/epic2/phase1_confidence/RESULTS_1B.md)). This is the Apart sprint project (Track 1), sprint from Friday 13 November 2026. It replaces the earlier Phase 2 (sycophancy), which moves to later; see the [epic plan](epic2_plan_03-11-2026.md).
+Follows [Phase 1](epic2_phase1_plan_03-11-2026.md) ([results](../experiments/epic2/phase1_confidence/RESULTS.md)) and [Phase 1B](epic2_phase1b_plan_08-11-2026.md) ([results](../experiments/epic2/phase1_confidence/RESULTS_1B.md)). This is the project for the Apart AI x Epistemics Research Sprint, 13 to 15 November 2026; submissions close Monday 16 November, 11:59 UTC. Rules, report requirements and talks: [sprint brief](epic2_sprint_brief_13-11-2026.md). It replaces the earlier Phase 2 (sycophancy), which moves to later; see the [epic plan](epic2_plan_03-11-2026.md).
 
 > **Status (2026-11-12): draft, awaiting approval.** No code until approved; Step 1 (study) comes first.
 
@@ -91,7 +91,7 @@ If one readout closes most of the gap to the probe, that is the usable result: w
 3. **Build** (Mac). New folder `experiments/epic2/phase2_confidence_gap/`: `build_swaps.py` (wrong answers by construction, written to `data/epic2/confidence/swaps.jsonl`), an Inspect task for E2's conversations and P(True) (reusing Phase 1's prompts and grading), and `extract_states.py --answers` to teacher-force given answers. Unit tests on the wrong-answer builders (always wrong, always different from the correct and the own answer, plausible length).
 4. **4090 smoke runs** (`--limit`), then the full runs: E2 for three configs (base: P(True) only), E3 P(True) on test and training sets, extraction for E2's answers.
 5. **Analysis and figures.** Paired bootstrap CIs; a `verify.py` that recomputes every number in the report from the committed tables.
-6. **Report.** Sprint report about 8 pages plus appendices: key figure on page 1, related work stating exactly what is new, limitations, LLM usage statement, pre-registered predictions with outcomes, public code and data. State plainly that Phases 1 and 1B were done before the sprint. Then a third lifeandtimes post.
+6. **Report.** On the official template, 4 to 8 pages (hard cap) plus references and appendices, including the required Limitations and Dual-Use / Ethical Considerations appendix. Preexisting code is marked in the README (done for `phase1_confidence/`) and in the report. Also: key figure on page 1, related work stating exactly what is new, limitations, LLM usage statement, pre-registered predictions with outcomes, public code and data. State plainly that Phases 1 and 1B were done before the sprint. Then a third lifeandtimes post.
 
 **Stretch, only once E1 to E3 are done:** steering along the probe direction to see whether stated confidence follows (hypothesis 1); a small LoRA on Qwen3-1.7B to state confidence against correctness labels (hypothesis 4).
 

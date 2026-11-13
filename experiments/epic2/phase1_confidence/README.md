@@ -1,5 +1,7 @@
 # Epic 2 · Phase 1 — Confidence Audit
 
+> **Preexisting work (AI x Epistemics sprint disclosure).** All code, data and results in this folder (Phases 1 and 1B) were written between 3 and 12 November 2026, before the sprint began on 13 November. Work done during the sprint lives in `experiments/epic2/phase2_confidence_gap/`.
+
 Can a model tell when its own answer is solid from when it is on shaky ground? Five ways of eliciting confidence (stated after, sample agreement, Kalai threshold, stated before, token probabilities) compared on the same questions, across seven question categories with difficulty levels; calibration, discrimination and abstention per category.
 
 Plan: [`docs/epic2_phase1_plan_03-11-2026.md`](../../../docs/epic2_phase1_plan_03-11-2026.md).
