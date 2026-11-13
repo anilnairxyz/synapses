@@ -57,6 +57,13 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/synapses"]
 
+# --- Supply-chain cooldown -----------------------------------------------------
+# Only resolve package versions published at least 7 days ago: most malicious
+# releases are found and pulled within days. Bypass for one urgent fix with
+# `uv lock --upgrade-package X --exclude-newer-package X=<date>` or edit here.
+[tool.uv]
+exclude-newer = "7 days"
+
 # --- PyTorch source selection -------------------------------------------------
 # On Linux (the PC / WSL, RTX 4090) pull the CUDA 12.4 build of torch.
 # On macOS (this machine) fall back to the default PyPI wheel (CPU / MPS).
