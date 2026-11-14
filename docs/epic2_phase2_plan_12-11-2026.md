@@ -33,13 +33,13 @@ Candidate explanations for the gap between what the model represents and what it
 
 Before any code, check what is already known, and record it here:
 
-- **Ji et al. 2025**, *Calibrating Verbal Uncertainty as a Linear Feature to Reduce Hallucinations*: verbal uncertainty as one direction, separate from the model's actual uncertainty, steered. Closest prior work to hypotheses 1 and 3; confirm the claim and what it leaves open.
+- **Ji et al. 2025**, [*Calibrating Verbal Uncertainty as a Linear Feature to Reduce Hallucinations*](https://arxiv.org/abs/2503.14477) (EMNLP 2025): verbal uncertainty as one direction, separate from the model's actual uncertainty, steered. Closest prior work to hypotheses 1 and 3. **Read 2026-11-14** (notes below).
 - **Kadavath et al. 2022**, [*Language Models (Mostly) Know What They Know*](https://arxiv.org/abs/2207.05221): P(True) exactly as they defined it (prompt, few-shot, which token), so E3 reproduces it. **Read 2026-11-14** (notes below).
-- **Lin, Hilton & Evans 2022**, *Teaching Models to Express Their Uncertainty in Words*: the fine-tuning evidence for hypothesis 4 (stretch).
+- **Lin, Hilton & Evans 2022**, [*Teaching Models to Express Their Uncertainty in Words*](https://arxiv.org/abs/2205.14334): the fine-tuning evidence for hypothesis 4 (stretch). **Read 2026-11-14** (notes below).
 - **Sanz-Guerrero, Mager & von der Wense 2026**, [*Large Language Models Are Overconfident in Their Own Responses*](https://arxiv.org/abs/2606.03437) (Findings of ACL 2026). Found by the user, 2026-11-12; **read in full 2026-11-14** (notes below). Ownership bias, instruction tuning and the user-framing fix. **This covers E2's attribution factor and part of hypothesis 2.**
 - A search for further prior work that puts a different answer in the model's mouth and asks for its confidence (prefill, self-preference), so E2's novelty is stated, not assumed.
 
-Provenance of this list: Sanz-Guerrero et al. was found by the user; Kadavath et al. was checked by search and then read; Ji et al. and Lin et al. are from memory and not yet checked against the source. The search in the last bullet has not been done, and Sanz-Guerrero et al. cite no prefill, self-preference or self-recognition work, so it cannot be borrowed from them.
+Provenance of this list: Sanz-Guerrero et al. was found by the user; Kadavath et al., Ji et al. and Lin et al. were first cited from memory, then checked by search and read (2026-11-14); the descriptions above held up. The search in the last bullet has not been done, and Sanz-Guerrero et al. cite no prefill, self-preference or self-recognition work, so it cannot be borrowed from them.
 
 ### Sanz-Guerrero et al.: full read (2026-11-14)
 
@@ -99,6 +99,46 @@ Read from the arXiv HTML (v4): all of the main text and the start of the appendi
 - *Calibration vs discrimination:* a temperature rescales confidence without changing its ranking, so calibration gaps like Sanz-Guerrero et al.'s can be partly cosmetic; discrimination cannot be fixed that way. This is why E2 and E3 lead with within-level AUROC; it also fits Phase 1B (base and instruct hold the same internal knowledge). ECE and Brier are reported alongside so the results compare with Sanz-Guerrero et al.
 - *Related work:* P(IK) is the trained precursor of our probe (correctness predicted before answering, from the model). Ours is a linear readout on frozen states, and is measured within levels; their AUROCs are pooled across difficulty, and arithmetic at 0.93 to 0.99 is very likely the coarse easy-vs-hard signal that Phase 1 showed shrinks within levels. "Own samples more plausible" is cited with Sanz-Guerrero et al. as the origin of the ownership idea.
 - *Optional readout:* brainstorm P(True), using the Phase 1 samples already drawn for B; tests whether showing the samples adds anything beyond B. Optional, so E3 does not grow.
+
+### Ji et al.: read (2026-11-14)
+
+Read from the arXiv HTML (v2): main text and limitations verbatim; appendix details (prompts, layers, set sizes) only from a summary.
+
+- **Models:** Llama-3.1-8B, Mistral-7B-v0.3, Qwen2.5-7B, Llama-3.1-70B, all instruct; no base models.
+- **Datasets:** TriviaQA, NQ-Open, PopQA: short closed-book factual questions, i.e. **recall only**.
+- **Verbal uncertainty (VU):** one-sentence answers, the model allowed to hedge; an LLM judge scores decisiveness 0 to 1. Hedging in words, **not a stated number** like our A and D.
+- **Semantic uncertainty (SU):** semantic entropy over 10 samples, close to our B. This, not correctness, is their reference for "actual" uncertainty.
+- **The Verbal Uncertainty Feature:** difference of mean activations between strongly hedged and confident answers, last token of the question, middle to last layers. It transfers across datasets and beats a random direction (Llama-8B NQ-Open, confident hallucinations 26% vs 35% for random).
+- **MUC (the fix):** add the feature to activations, scaled per question by the gap between normalised SU and VU, only when a detector flags a likely hallucination. SU computed by sampling or predicted by a linear probe on the question's states.
+- **Results:** VU and SU correlate 0.05 to 0.6 (per-model averages 0.28 to 0.60). Confident hallucinations (wrong, with VU below a threshold) fall about 30% relative (Llama-8B 32.4% → 22.3%), for 1 to 2 points of accuracy and more refusals (Llama-8B 19% → 28%). VU + SU detection AUROC 0.66 to 0.80 (0.57 to 0.75 with the probe), **pooled across difficulty**. Qwen responds least to steering.
+- **Not reported:** AUROC of VU alone or SU alone; the probe's own accuracy. They describe an "underutilized inherent ability to express nuanced uncertainty" but do not test whether the model knows more than it says. Code: `facebookresearch/verbal_uncertainty_feature_calibration`.
+
+**What changes after Ji et al.**
+
+- *Hypothesis 1 and the steering stretch:* steering expressed uncertainty along one direction is done. What stays open is whether the direction behind **stated confidence** is the same as the direction that encodes **correctness**. The steering stretch is reframed around that (see Steps), starting with a cheap comparison on existing states: a stated-confidence direction (high vs low A, difference of means) against the correctness probe, by cosine and by within-level AUROC for correctness. Caveat: Qwen3-8B states ≥ 0.9 almost always, so the low set is small.
+- *Framing:* "the words do not reflect the internal state" is not new for recall. What we add: correctness rather than sample disagreement as the reference; numeric stated confidence rather than hedging; three kinds of question; within levels; base models.
+- *Tail measure:* align with their "confident hallucination" (wrong and stated with high confidence) and cite it as precedent.
+- *Hypothesis 3:* they fix the gap by steering, not by asking differently, so E3 is not covered.
+
+### Lin, Hilton & Evans: read (2026-11-14)
+
+Read from the arXiv HTML (v2); venue not confirmed from the pages read.
+
+- **Model:** GPT-3 175B (davinci), supervised fine-tuning through the OpenAI API, about 10k examples, one epoch.
+- **CalibratedMath:** 21 arithmetic tasks with difficulty levels from digit counts and format. Trained on add/subtract; evaluated under shift on multiply/divide and on multi-answer questions (where accuracy is higher, 65% vs 21% median).
+- **Verbalised probability:** "Confidence: 19%", or five word categories. **Targets are the sub-task's empirical accuracy, not whether this answer is right**; the authors admit this gives bad labels for easy items in hard sub-tasks.
+- **Baselines:** the answer's logit (zero-shot), an "indirect logit" fine-tuned on correctness (P(True)-like), a constant. **A heuristic baseline:** logistic regression on digit counts, operator and format.
+- **Metrics:** MSE (Brier) and MAD calibration; **no AUROC**.
+- **Results (MSE / MAD %, trained on add/subtract):** multi-answer: verbalised numbers 22.0 / 16.4, answer logit 37.4 / 33.7, heuristic 29.7 / 31.2. Multiply/divide: verbalised 15.5 / 19.0, answer logit 10.4 / 9.4, constant 15.3 / 8.5, so verbalised does **not** beat the logit or even the constant there. Calibration is "much better in-distribution". Few-shot with 50 examples comes "close to" fine-tuned.
+- **Pre-existing features:** a linear probe on embeddings predicts correctness and generalises (multiply/divide 14.0 / 14.2); verbalised beats the heuristic, so "tentative evidence" that GPT-3 uses features it already had. They do not test whether the stated number reads the probe's direction.
+- **Limitations:** one model; SFT only (RL "more flexible"); narrow shift ("content and format of questions did not shift much"); label quality.
+
+**What changes after Lin et al.**
+
+- *The LoRA stretch is sharpened:* Lin et al. trained on **sub-task accuracy**, which teaches the coarse self-knowledge (which levels are hard) that Phase 1 showed largely vanishes within levels. Our version trains stated confidence on **per-answer correctness** and is judged **within levels** against the probe. If it reaches the probe, hypothesis 4 (objective mismatch) holds; if it learns only the level, it is the stereotype again (hypothesis 6). A transfer test across kinds (train on one, test on the others) mirrors their shift test.
+- *E1 has a precedent:* their heuristic baseline (digits, operator, format) is our question-details probe. Cite it; ours is within levels and across three kinds.
+- *Related work:* Lin et al. is computation only, Ji et al. recall only; our three kinds side by side is new against both.
+- *A cheap alternative to fine-tuning:* many-shot stated confidence (50 labelled examples in the prompt) came close to fine-tuning for them; a possible E3 readout if time allows, not planned.
 
 Output: a short "what we add" paragraph, and any change to E1 to E3.
 
@@ -163,7 +203,10 @@ Proposed additions after Navaie's talk (2026-11-13; notes in the [sprint brief](
 5. **Analysis and figures.** Paired bootstrap CIs; the tail measures (confident wrong answers); a `verify.py` that recomputes every number in the report from the committed tables.
 6. **Report.** On the official template, 4 to 8 pages (hard cap) plus references and appendices, including the required Limitations and Dual-Use / Ethical Considerations appendix. Preexisting code is marked in the README (done for `phase1_confidence/`) and in the report. Also: key figure on page 1, related work stating exactly what is new, limitations, LLM usage statement, pre-registered predictions with outcomes, a "how we tried to break it" section and reliance conditions (see *From the sprint talks*), public code and data. State plainly that Phases 1 and 1B were done before the sprint. Then a third lifeandtimes post.
 
-**Stretch, only once E1 to E3 are done:** steering along the probe direction to see whether stated confidence follows (hypothesis 1); a small LoRA on Qwen3-1.7B to state confidence against correctness labels (hypothesis 4).
+**Stretch, only once E1 to E3 are done (both kept, 2026-11-14):**
+
+- *Directions and steering (hypothesis 1), reframed after Ji et al.* First, on existing states: a stated-confidence direction (difference of means, high vs low A) compared with the correctness probe, by cosine and within-level AUROC. Then, if worthwhile, steer along the correctness direction and see whether stated confidence follows.
+- *LoRA (hypothesis 4), sharpened after Lin et al.* A small LoRA on Qwen3-1.7B to state confidence against **per-answer correctness** (not sub-task accuracy as in Lin et al.), judged within levels against the probe, with a transfer test across kinds.
 
 ## Out of scope
 
