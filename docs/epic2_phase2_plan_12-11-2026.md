@@ -36,10 +36,36 @@ Before any code, check what is already known, and record it here:
 - **Ji et al. 2025**, *Calibrating Verbal Uncertainty as a Linear Feature to Reduce Hallucinations*: verbal uncertainty as one direction, separate from the model's actual uncertainty, steered. Closest prior work to hypotheses 1 and 3; confirm the claim and what it leaves open.
 - **Kadavath et al. 2022**: P(True) exactly as they defined it (prompt, few-shot, which token), so E3 reproduces it.
 - **Lin, Hilton & Evans 2022**, *Teaching Models to Express Their Uncertainty in Words*: the fine-tuning evidence for hypothesis 4 (stretch).
-- **Sanz-Guerrero, Mager & von der Wense 2026**, [*Large Language Models Are Overconfident in Their Own Responses*](https://arxiv.org/abs/2606.03437) (Findings of ACL 2026). Found by the user, 2026-11-12. Six open-weight models, three benchmarks, three elicitation methods: models give up to 26% higher confidence to their own answers than to identical answers attributed to the user ("ownership bias"); instruction tuning hurts calibration and the chat template makes it worse; reframing the answer as user input narrows the base vs instruct calibration gap. **This covers E2's attribution factor and part of hypothesis 2.** To read in full: their benchmarks and question types, whether they vary correctness or only measure calibration, and which elicitation methods.
+- **Sanz-Guerrero, Mager & von der Wense 2026**, [*Large Language Models Are Overconfident in Their Own Responses*](https://arxiv.org/abs/2606.03437) (Findings of ACL 2026). Found by the user, 2026-11-12; **read in full 2026-11-14** (notes below). Ownership bias, instruction tuning and the user-framing fix. **This covers E2's attribution factor and part of hypothesis 2.**
 - A search for further prior work that puts a different answer in the model's mouth and asks for its confidence (prefill, self-preference), so E2's novelty is stated, not assumed.
 
-**What changes after Sanz-Guerrero et al.** (subject to the full read). Self vs other attribution is no longer a contribution; it stays in E2 as a replication, because what is new is around it: (a) correctness varied by construction, so E2 measures whether confidence *separates* a right from a wrong answer, not only its level; (b) by kind of question with difficulty fixed, where the prediction is that ownership matters most where the model has no internal access (perception); (c) the probe on the same answers, which says whether the model's state knows the answer is wrong regardless of who is said to have given it. Their fix (frame the answer as the user's) becomes a readout in E3, tested against P(True) and the probe ceiling on computation and perception, which their benchmarks may not cover.
+Provenance of this list: Sanz-Guerrero et al. was found by the user; Kadavath et al. exists (checked by search, details not yet read); Ji et al. and Lin et al. are from memory and not yet checked against the source. The search in the last bullet has not been done, and Sanz-Guerrero et al. cite no prefill, self-preference or self-recognition work, so it cannot be borrowed from them.
+
+### Sanz-Guerrero et al.: full read (2026-11-14)
+
+Read from the arXiv HTML (v1). The prompt templates are images and were not readable; dataset sizes and checkpoint IDs are not stated.
+
+- **Models:** six base/instruct pairs (Llama 3.1 8B/70B, Qwen3 4B/30B, Gemma 3 4B/27B), instruct run with and without the chat template; GPT-5.2 on MMLU only.
+- **Benchmarks:** MMLU (four options, the main one), GSM8K (numeric maths), TruthfulQA, open-ended MMLU.
+- **Readouts:** P(True) (after Kadavath et al.), a verbalised percentage, a seven-point verbal scale ("very low" to "very high").
+- **Own vs user:** two prompts that differ only in whether the answer sits in the assistant or the user turn. On MMLU they ask for confidence in each of the four options in turn, so most "own" answers are options the model did not choose, placed in its turn.
+- **Metrics:** ECE, Brier, mean confidence; Wilcoxon and bootstrap tests. **No AUROC or other discrimination measure, and no hidden-state analysis.**
+- **Instruction tuning:** on MMLU, averaged over the six models, accuracy +3.7 points but ECE +13.1 points; the chat template adds another 2.7. Asking for confidence directly does not remove the gap (Gemma 3 4B, P(True): ECE 0.02 base vs 0.65 instruct with chat).
+- **Ownership bias:** confidence higher in the assistant turn by 0.16 (P(True)), 0.18 (verbal %), 0.27 (verbal scale) on average. The headline "up to 26%" is the verbal-scale *average*, an absolute difference, not a maximum or relative; the largest single case is Qwen3-30B at 0.46. On GSM8K, +0.20 (P(True)).
+- **Right vs wrong:** one qualitative sentence from a plot, confidence is "largely independent of accuracy". In the assistant turn the four options' confidences sum to roughly 2 to 3, where calibrated would be 1.
+- **The fix** (answer in the user turn) cuts ECE by 0.10, 0.18, 0.26 but recovers base-model calibration only partly: better than base for the verbal scale, slightly worse for verbal %, about twice base's ECE for P(True).
+- **Their conclusion**, that reliable confidence needs "decoupling the generation of an answer from its evaluation" (an "observer" role), is close to our hypothesis 5.
+
+**What changes after Sanz-Guerrero et al.**
+
+- *Self vs user attribution* is a direct replication, not a contribution: same answer text, only the turn changes, and Qwen3 is in both studies.
+- *Correctness by construction* is only partly new: their four MMLU options already put right and wrong answers in the assistant turn. What is new is measuring **discrimination** (within-level AUROC and the paired right − wrong difference) where they report calibration only, and using the model's real free-text answer against a matched plausible wrong one rather than fixed options.
+- *By kind of question:* GSM8K covers computation for calibration, so their fix is not untested there; **perception is not covered**, and neither is difficulty held fixed. The prediction that ownership matters most where the model has no internal access (perception) stays.
+- *The probe on the same answers* is new: it says whether the model's state knows the answer is wrong, whoever is said to have given it.
+- *E3:* P(True) and user framing are both among their readouts, for calibration; what is new is comparing them within levels against the probe ceiling.
+- *Hypothesis 2 via the base model:* they show instruction tuning hurts calibration, so our base-model P(True) mostly replicates that. The new question is whether it also hurts *discrimination*, given Phase 1B found base and instruct hold the same internal knowledge.
+
+The sharpest new angle: they measured how confident models are, never whether that confidence tells a right answer from a wrong one; their own plot suggests it does not, but unquantified. E2 and E3 measure exactly that, with the probe as the reference. Cite their 26% as an average absolute difference.
 
 Output: a short "what we add" paragraph, and any change to E1 to E3.
 
