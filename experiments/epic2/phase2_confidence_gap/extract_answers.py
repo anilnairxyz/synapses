@@ -17,10 +17,13 @@ For one config, every row of swaps.jsonl (build_swaps.py):
        (B) False
        The proposed answer is:
 
-   For the instruct models it is the user's message and the assistant's reply is started
-   with "(", so the next token is the letter; for the base model the raw text continues
-   " (". P(True) = P("A") / (P("A") + P("B")) at that position, one forward pass; the share
-   of all probability on "A" or "B" is kept as a check. Variants:
+   For the instruct models it is the user's message and the reply is read as "(A)" vs
+   "(B)"; for the base model the raw text continues " (A)" vs " (B)". The continuations are
+   tokenised on their own, as the model would write them; the context plus their shared
+   leading tokens is run once, and P(True) = P(a) / (P(a) + P(b)) for the first tokens a, b
+   where they differ. P(a) + P(b) is kept as a check that the model answers in the format
+   (a first smoke run that appended "(" to the text before tokenising put almost no
+   probability on the letters). Variants:
      placement  user       the block alone (the neutral, observer framing)
                 assistant  (instruct only) Phase 1's prompt, the answer as the assistant's
                            reply, then the block: the answer is the model's own
@@ -111,30 +114,42 @@ def shots_text(shots: list[dict]) -> str:
 
 
 def ptrue_text(tok, q: str, a: str, placement: str, shots: str, base: bool) -> str:
+    """The context up to where the model answers (A) or (B); see CONTINUATIONS."""
     content = shots + block(q, a)
     if base:
-        return content + " ("
+        return content
     msgs = [{"role": "user", "content": content}]
     if placement == "assistant":
         msgs = [{"role": "user", "content": phase1.ct.PROMPT_P.format(q=q)},
                 {"role": "assistant", "content": a}] + msgs
     return tok.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True,
-                                   enable_thinking=False) + "("
+                                   enable_thinking=False)
 
 
-def letter_ids(tok) -> tuple[int, int]:
-    a, b = tok.encode("A", add_special_tokens=False), tok.encode("B", add_special_tokens=False)
-    if len(a) != 1 or len(b) != 1:
-        raise SystemExit(f"'A'/'B' are not single tokens: {a} {b}")
-    return a[0], b[0]
+CONTINUATIONS = {False: ("(A)", "(B)"), True: (" (A)", " (B)")}  # instruct reply; base text
 
 
-def next_token_probs(model, tok, texts: list[str], batch_size: int, device: str) -> np.ndarray:
-    """[n, 2]: P(true) renormalised over A/B, and the A+B share of all probability."""
+def split_continuations(tok, base: bool) -> tuple[list[int], int, int]:
+    """Tokenised on their own (as the model would write them): the shared leading tokens,
+    then the first token where "(A)" and "(B)" differ."""
+    ca, cb = (tok(c, add_special_tokens=False)["input_ids"] for c in CONTINUATIONS[base])
+    n = 0
+    while n < min(len(ca), len(cb)) and ca[n] == cb[n]:
+        n += 1
+    if n >= min(len(ca), len(cb)):
+        raise SystemExit(f"continuations do not diverge: {ca} {cb}")
+    return ca[:n], ca[n], cb[n]
+
+
+def next_token_probs(model, tok, texts: list[str], base: bool, batch_size: int, device: str) -> np.ndarray:
+    """[n, 2]: P(true) = P(A) / (P(A) + P(B)) at the first token where the continuations
+    differ, and P(A) + P(B) there (should be near 1 if the model answers in the format).
+    Context and continuation are tokenised separately, so the continuation is split the way
+    the model would produce it."""
     import torch
 
-    ida, idb = letter_ids(tok)
-    enc = [tok(t, add_special_tokens=False)["input_ids"] for t in texts]
+    shared, ida, idb = split_continuations(tok, base)
+    enc = [tok(t, add_special_tokens=False)["input_ids"] + shared for t in texts]
     out = np.zeros((len(texts), 2))
     order = sorted(range(len(enc)), key=lambda i: len(enc[i]))
     for b in range(0, len(order), batch_size):
@@ -262,9 +277,11 @@ def main() -> None:
                 texts = [ptrue_text(tok, qs[r.qid]["question"], r.text, placement, sh, base)
                          for r in rows.itertuples()]
                 if args.limit and placement == "user" and k == K_SHOTS:
-                    print("  P(True) prompt end (repr):", repr(texts[0][-220:]))
+                    shared, ida, idb = split_continuations(tok, base)
+                    print("  P(True) prompt end (repr):", repr(texts[0][-220:]), "| then",
+                          repr(tok.decode(shared)), "and", repr(tok.decode([ida])), "vs", repr(tok.decode([idb])))
                 t0 = time.time()
-                p = next_token_probs(model, tok, texts, args.batch_size, device)
+                p = next_token_probs(model, tok, texts, base, args.batch_size, device)
                 res[f"ptrue_{placement}_{k}"], res[f"ab_mass_{placement}_{k}"] = p[:, 0], p[:, 1]
                 print(f"  P(True) {placement} {k}-shot: {len(texts)} in {time.time() - t0:.0f}s; "
                       f"A+B mass median {np.nanmedian(p[:, 1]):.3f}, min {np.nanmin(p[:, 1]):.3f}")
