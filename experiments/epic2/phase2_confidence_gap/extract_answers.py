@@ -145,10 +145,12 @@ def next_token_probs(model, tok, texts: list[str], batch_size: int, device: str)
         for r, i in enumerate(idx):  # right padding; read each row at its own last position
             ids[r, :len(enc[i])] = torch.tensor(enc[i])
             mask[r, :len(enc[i])] = 1
-        with torch.no_grad():
-            logits = model(input_ids=ids.to(device), attention_mask=mask.to(device)).logits
+        with torch.no_grad():  # the output layer only at each row's last token (memory)
+            hidden = model.model(input_ids=ids.to(device), attention_mask=mask.to(device)).last_hidden_state
+            last = torch.tensor([len(enc[i]) - 1 for i in idx], device=hidden.device)
+            logits = model.lm_head(hidden[torch.arange(len(idx), device=hidden.device), last])
         for r, i in enumerate(idx):
-            p = torch.softmax(logits[r, len(enc[i]) - 1].float(), dim=-1)
+            p = torch.softmax(logits[r].float(), dim=-1)
             pa, pb = float(p[ida]), float(p[idb])
             out[i] = (pa / (pa + pb) if pa + pb > 0 else np.nan, pa + pb)
     return out
@@ -172,13 +174,15 @@ def answer_logprobs(model, items: list[dict], batch_size: int, device: str) -> n
             ids[r, :len(items[i]["ids"])] = torch.tensor(items[i]["ids"])
             mask[r, :len(items[i]["ids"])] = 1
         with torch.no_grad():
-            logp = torch.log_softmax(model(input_ids=ids.to(device), attention_mask=mask.to(device)).logits.float(), -1)
+            hidden = model.model(input_ids=ids.to(device), attention_mask=mask.to(device)).last_hidden_state
         for r, i in enumerate(idx):
             p, a = items[i]["n_prompt"], items[i]["n_answer"]
             if not a:
                 continue
+            with torch.no_grad():  # the output layer only over this answer's positions (memory)
+                logp = torch.log_softmax(model.lm_head(hidden[r, p - 1:p + a - 1]).float(), -1)
             tgt = torch.tensor(items[i]["ids"][p:p + a], device=logp.device)
-            lp = logp[r, p - 1:p + a - 1].gather(1, tgt[:, None]).squeeze(1)
+            lp = logp.gather(1, tgt[:, None]).squeeze(1)
             out[i] = (float(lp.sum()), float(lp.mean()))
     return out
 
