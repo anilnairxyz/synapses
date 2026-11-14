@@ -17,8 +17,9 @@ For one config, every row of swaps.jsonl (build_swaps.py):
        (B) False
        The proposed answer is:
 
-   For the instruct models it is the user's message and the reply is read as "(A)" vs
-   "(B)"; for the base model the raw text continues " (A)" vs " (B)". The continuations are
+   For the instruct models the block without its last line is the user's message and the
+   assistant's reply starts with "The proposed answer is:"; for the base model the raw text
+   is the whole block. Either way the model continues " (A)" vs " (B)". The continuations are
    tokenised on their own, as the model would write them; the context plus their shared
    leading tokens is run once, and P(True) = P(a) / (P(a) + P(b)) for the first tokens a, b
    where they differ. P(a) + P(b) is kept as a check that the model answers in the format
@@ -113,20 +114,29 @@ def shots_text(shots: list[dict]) -> str:
 # ----------------------------------------------------------------------------- P(True)
 
 
+LAST_LINE = "The proposed answer is:"
+
+
 def ptrue_text(tok, q: str, a: str, placement: str, shots: str, base: bool) -> str:
-    """The context up to where the model answers (A) or (B); see CONTINUATIONS."""
+    """The context up to where the model answers " (A)" or " (B)".
+
+    Base model: the raw text, Kadavath's block whole. Instruct models: the block without its
+    last line is the user's message, and the assistant's reply starts with that line, so the
+    model completes it exactly as in Kadavath's format. (Leaving the line in the user's
+    message put almost no probability on "(A"/"(B" as the first reply token.)"""
     content = shots + block(q, a)
     if base:
         return content
+    content = content[: -len(LAST_LINE)].rstrip("\n")
     msgs = [{"role": "user", "content": content}]
     if placement == "assistant":
         msgs = [{"role": "user", "content": phase1.ct.PROMPT_P.format(q=q)},
                 {"role": "assistant", "content": a}] + msgs
     return tok.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True,
-                                   enable_thinking=False)
+                                   enable_thinking=False) + LAST_LINE
 
 
-CONTINUATIONS = {False: ("(A)", "(B)"), True: (" (A)", " (B)")}  # instruct reply; base text
+CONTINUATIONS = {False: (" (A)", " (B)"), True: (" (A)", " (B)")}  # instruct reply; base text
 
 
 def split_continuations(tok, base: bool) -> tuple[list[int], int, int]:
@@ -141,7 +151,8 @@ def split_continuations(tok, base: bool) -> tuple[list[int], int, int]:
     return ca[:n], ca[n], cb[n]
 
 
-def next_token_probs(model, tok, texts: list[str], base: bool, batch_size: int, device: str) -> np.ndarray:
+def next_token_probs(model, tok, texts: list[str], base: bool, batch_size: int, device: str,
+                     show_top: bool = False) -> np.ndarray:
     """[n, 2]: P(true) = P(A) / (P(A) + P(B)) at the first token where the continuations
     differ, and P(A) + P(B) there (should be near 1 if the model answers in the format).
     Context and continuation are tokenised separately, so the continuation is split the way
@@ -166,6 +177,10 @@ def next_token_probs(model, tok, texts: list[str], base: bool, batch_size: int, 
             logits = model.lm_head(hidden[torch.arange(len(idx), device=hidden.device), last])
         for r, i in enumerate(idx):
             p = torch.softmax(logits[r].float(), dim=-1)
+            if show_top and i == 0:
+                top = torch.topk(p, 5)
+                print("    top next tokens:", [(tok.decode([int(t)]), round(float(v), 3))
+                                               for v, t in zip(top.values, top.indices)])
             pa, pb = float(p[ida]), float(p[idb])
             out[i] = (pa / (pa + pb) if pa + pb > 0 else np.nan, pa + pb)
     return out
@@ -283,7 +298,8 @@ def main() -> None:
                     print("  P(True) prompt end (repr):", repr(texts[0][-220:]), "| then",
                           repr(tok.decode(shared)), "and", repr(tok.decode([ida])), "vs", repr(tok.decode([idb])))
                 t0 = time.time()
-                p = next_token_probs(model, tok, texts, base, args.batch_size, device)
+                p = next_token_probs(model, tok, texts, base, args.batch_size, device,
+                                     show_top=bool(args.limit))
                 res[f"ptrue_{placement}_{k}"], res[f"ab_mass_{placement}_{k}"] = p[:, 0], p[:, 1]
                 print(f"  P(True) {placement} {k}-shot: {len(texts)} in {time.time() - t0:.0f}s; "
                       f"A+B mass median {np.nanmedian(p[:, 1]):.3f}, min {np.nanmin(p[:, 1]):.3f}")

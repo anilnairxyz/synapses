@@ -34,11 +34,13 @@ from inspect_ai import Task, task
 from inspect_ai.dataset import MemoryDataset, Sample
 from inspect_ai.model import (ChatMessageAssistant, ChatMessageUser, GenerateConfig, ModelOutput,
                               get_model)
-from inspect_ai.scorer import Score, Target, metric, scorer
+from inspect_ai.scorer import SampleScore, Score, Target, metric, scorer
 from inspect_ai.solver import Generate, TaskState, solver
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # Inspect loads this file by path
 import phase1  # noqa: E402
+
+ct = phase1.ct  # bound while loading: Inspect restores sys.path before the task runs
 
 CONF_JSON = 'Reply with only a JSON object: {"confidence": <0 to 1>}'
 SELF_PROMPT = "What is the probability, from 0 to 1, that your answer is correct?\n\n" + CONF_JSON
@@ -50,7 +52,7 @@ INSTRUCT = ("qwen3-8b", "qwen3-1.7b")
 
 def messages(q: str, answer: str, attribution: str) -> list:
     if attribution == "self":
-        return [ChatMessageUser(content=phase1.ct.PROMPT_P.format(q=q)),
+        return [ChatMessageUser(content=ct.PROMPT_P.format(q=q)),
                 ChatMessageAssistant(content=answer),
                 ChatMessageUser(content=SELF_PROMPT)]
     if attribution == "user":
@@ -80,10 +82,10 @@ def load(config: str, limit_per_cell: int | None) -> MemoryDataset:
 def parse_confidence(text: str) -> float | None:
     """The JSON's "confidence" (Phase 1's parsers); failing that, a reply that is just a
     number ("0.9", "90%"): the instruct models sometimes skip the JSON wrapper."""
-    obj = phase1.ct.parse_json(text) or {}
-    c = phase1.ct.parse_prob(obj.get("confidence"))
+    obj = ct.parse_json(text) or {}
+    c = ct.parse_prob(obj.get("confidence"))
     if c is None and re.fullmatch(r"\s*-?\d+(?:\.\d+)?\s*%?\s*\.?\s*", text or ""):
-        c = phase1.ct.parse_prob(text.strip().rstrip("."))
+        c = ct.parse_prob(text.strip().rstrip("."))
     return c
 
 
@@ -98,7 +100,7 @@ def ask_confidence(max_tokens: int):
         rec: dict[str, Any] = {}
         try:
             out = await model.generate(messages(state.input_text, r["text"], att), config=cfg)
-            text, cut = phase1.ct.strip_think(out.completion)
+            text, cut = ct.strip_think(out.completion)
             rec = {"text": text, "confidence": parse_confidence(text),
                    "truncated": cut or out.stop_reason == "max_tokens"}
         except Exception as e:  # keep the run going; the record shows the error
@@ -111,8 +113,8 @@ def ask_confidence(max_tokens: int):
 
 
 def _mean_of(key: str):
-    def compute(scores) -> float:
-        vals = [getattr(s, "score", s).value.get(key) for s in scores]
+    def compute(scores: list[SampleScore]) -> float:
+        vals = [s.score.value.get(key) for s in scores]
         vals = [v for v in vals if isinstance(v, (int, float)) and not math.isnan(v)]
         return sum(vals) / len(vals) if vals else float("nan")
     return compute

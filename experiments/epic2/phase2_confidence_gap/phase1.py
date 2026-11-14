@@ -42,9 +42,15 @@ DATA = ROOT / "data" / "epic2" / "confidence" / "phase2"
 RESULTS = HERE / "results"
 RUNS = HERE / "runs"
 
-for p in (PHASE1, ROOT / "src"):
-    if str(p) not in sys.path:
-        sys.path.insert(0, str(p))
+def _paths() -> None:
+    """Put Phase 1 and src/ on the import path (again: Inspect restores sys.path after
+    loading a task file, so a path added at import time can be gone when the task runs)."""
+    for p in (PHASE1, ROOT / "src"):
+        if str(p) not in sys.path:
+            sys.path.insert(0, str(p))
+
+
+_paths()
 
 from synapses import calibration as cal  # noqa: E402  (numpy only)
 
@@ -56,6 +62,7 @@ PHASE1_QUESTIONS = ROOT / "data" / "epic2" / "confidence" / "questions.jsonl"
 def __getattr__(name: str) -> ModuleType:
     """Import the heavier Phase 1 modules on first access (``phase1.ct``, ``phase1.probe``, ...)."""
     if name in _LAZY:
+        _paths()
         mod = importlib.import_module(_LAZY[name])
         globals()[name] = mod
         return mod

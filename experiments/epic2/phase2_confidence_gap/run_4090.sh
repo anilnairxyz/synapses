@@ -54,8 +54,9 @@ import glob, sys
 from inspect_ai.log import read_eval_log
 log = read_eval_log(sorted(glob.glob(sys.argv[1] + "/*.eval"))[-1])
 for s in log.samples[:12]:
-    sc = s.scores["confidence_record"]
-    print(f"  {s.id:28s} -> {sc.value['confidence']!s:5s} reply {sc.answer!r:.70}")
+    sc, rec = s.scores["confidence_record"], s.metadata["result"]
+    print(f"  {s.id:28s} -> {sc.value['confidence']!s:5s} reply {sc.answer!r:.60}",
+          f"ERROR {rec['error'][:120]}" if rec.get("error") else "")
 PY
     fi
   done

@@ -45,3 +45,12 @@ def test_no_direct_phase1_imports():
                          re.M)
     offenders = [p.name for p in PHASE2.rglob("*.py") if p.name != "phase1.py" and pattern.search(p.read_text())]
     assert offenders == []
+
+
+def test_lazy_import_survives_sys_path_reset(monkeypatch):
+    """Inspect restores sys.path after loading a task file; phase1 must still import."""
+    pytest.importorskip("sklearn")
+    monkeypatch.setattr(sys, "path", [p for p in sys.path if "phase1_confidence" not in p])
+    monkeypatch.delitem(sys.modules, "analyze_probes", raising=False)
+    monkeypatch.delitem(phase1.__dict__, "probes_analysis", raising=False)
+    assert phase1.probes_analysis.BEFORE == "gen"
