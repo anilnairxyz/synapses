@@ -16,9 +16,13 @@ Inputs read from Phase 1 (unchanged): the question sets in `data/epic2/confidenc
 
 - `phase1.py`: the reuse surface (above).
 - `analyze_stereotype.py`: E1, the stereotype analysis (Mac, Phase 1 outputs only). `--null` runs the shuffle check.
+- `build_swaps.py`: E2 / E3 inputs (Mac): for each Phase 1B config, the model's own answer, the correct answer and a plausible wrong one built by construction, the injected ones written in the model's own format; plus the training questions' own answers for E3. Checks that every injected answer grades as built with Phase 1's grader. Writes `data/epic2/confidence/phase2/swaps.jsonl` (committed with `git add -f`). Tests: `tests/test_phase2_swaps.py`.
+- `swap_task.py`: E2's verbal confidence (Inspect, vLLM): each given answer in the assistant turn ("your answer") or from the user ("my answer").
+- `extract_answers.py`: on the 4090 (HF): states, answer log-probability and P(True) (user and assistant placement, 0- and 8-shot) for every given answer, then Phase 1B's probes refitted and scored on the new states (with a check that own answers reproduce Phase 1B's scores). Writes `results/extract_<config>.parquet`; states under `states/` (gitignored).
+- `run_4090.sh`: `smoke` or `full`, optionally only `extract` or `swap`.
 - `results/`: tables, figures, and the findings so far ([`results/README.md`](results/README.md)).
 
-To come, per the plan: `build_swaps.py`, `swap_task.py`, `extract_answers.py` (E2, E3); `analyze.py`; `directions.py`, `steer.py` (E4); `lora/` (E5); `verify.py`; `plots.py`; `run_4090.sh`; `results/`, `runs/`.
+To come, per the plan: `analyze.py`; `directions.py`, `steer.py` (E4); `lora/` (E5); `verify.py`; `plots.py`; `run_4090.sh`; `results/`, `runs/`.
 
 ## Fixes to preexisting code during the sprint
 

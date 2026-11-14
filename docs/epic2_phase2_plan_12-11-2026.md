@@ -258,7 +258,7 @@ The repo is public and goes into the submission, so sprint work must be clearly 
 1. **Study.** Done 2026-11-14 (above); plan approved.
 2. **Set up the boundary.** Done 2026-11-14: tag `sprint-start` pushed; `phase2_confidence_gap/` with `README.md` and `phase1.py`; `tests/test_phase2_boundary.py` (6 pass).
 3. **E1** (Mac). Done 2026-11-14: `analyze_stereotype.py`; findings in [`results/README.md`](../experiments/epic2/phase2_confidence_gap/results/README.md). The prior-work search is done too (study notes above).
-4. **Build E2 and E3** (Mac). `build_swaps.py` (wrong answers by construction), `swap_task.py` (reusing Phase 1's prompts and grading), `extract_answers.py`. Unit tests on the wrong-answer builders (always wrong, always different from the correct and the own answer, plausible length).
+4. **Build E2 and E3** (Mac). Done 2026-11-14 (see the Phase 2 README); P(True) uses 8 worked examples and, for the instruct models, the assistant's reply started with "(" so the next token is the letter. `build_swaps.py` (wrong answers by construction), `swap_task.py` (reusing Phase 1's prompts and grading), `extract_answers.py`. Unit tests on the wrong-answer builders (always wrong, always different from the correct and the own answer, plausible length).
 5. **4090 smoke runs** (`--limit`), then the full runs: E2 for three configs (base: P(True) only), E3 P(True) on the test and training sets, extraction for E2's answers.
 6. **Analysis and figures for E1 to E3.** Paired bootstrap CIs; the tail measures; `verify.py`, which recomputes every number in the report from the committed tables.
 7. **E4** (directions on existing states, then steering on the 4090) and **E5** (LoRA on the 4090), each with its own smoke run, then into the analysis and `verify.py`.
