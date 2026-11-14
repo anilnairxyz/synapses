@@ -2,13 +2,21 @@
 
 Follows [Phase 1](epic2_phase1_plan_03-11-2026.md) ([results](../experiments/epic2/phase1_confidence/RESULTS.md)) and [Phase 1B](epic2_phase1b_plan_08-11-2026.md) ([results](../experiments/epic2/phase1_confidence/RESULTS_1B.md)). This is the project for the Apart AI x Epistemics Research Sprint, 13 to 15 November 2026; submissions close Monday 16 November, 11:59 UTC. Rules, report requirements and talks: [sprint brief](epic2_sprint_brief_13-11-2026.md). It replaces the earlier Phase 2 (sycophancy), which moves to later; see the [epic plan](epic2_plan_03-11-2026.md).
 
-> **Status (2026-11-12): draft, awaiting approval.** No code until approved; Step 1 (study) comes first.
+> **Status (2026-11-14): approved after the study step.** E1 to E3 first, then E4 and E5 (formerly stretch goals). The deadline is not the constraint; a coherent story is.
 
 ## Contribution
 
 *Whether an LLM can know it is wrong depends on how the answer is produced, and its confidence reports fail to reflect what it knows; we test why.*
 
-The first half is measured (Phases 1 and 1B): recall is known before answering, computation only after, perception barely; hidden-state probes beat stated confidence on every kind, and base and instruct models hold the same internal knowledge. The sprint adds the second half with three controlled pieces, not four or five partial ones: a stereotype analysis on existing data, a swap experiment, and an elicitation comparison. Steering and fine-tuning are stretch goals only.
+The first half is measured (Phases 1 and 1B): recall is known before answering, computation only after, perception barely; hidden-state probes beat stated confidence on every kind, and base and instruct models hold the same internal knowledge. The sprint adds the second half: three controlled pieces (a stereotype analysis on existing data, a swap experiment, an elicitation comparison), then two that test the deepest explanations (E4: is the direction behind stated confidence the one that encodes correctness, and does steering move it; E5: does training on correctness close the gap).
+
+**What we add, against prior work** (from the study step, below):
+
+- **Discrimination, not only calibration.** Sanz-Guerrero et al., Kadavath et al. (for RLHF) and Lin et al. report calibration; a temperature can fix calibration without changing which answers get more confidence, so it can be partly cosmetic. Ji et al. report pooled AUROC only. We lead with within-level AUROC: can the confidence tell this right answer from that wrong one at the same difficulty?
+- **Correctness as the reference.** Ji et al. compare words with sample disagreement, Lin et al. train on sub-task accuracy. Ours is whether this answer is right, known by construction in E2.
+- **Three kinds of question, difficulty fixed.** Ji et al. are recall only, Lin et al. computation only, Sanz-Guerrero et al. have no perception and no difficulty control.
+- **Words and hidden states on the same answers.** None of the four papers puts the model's outputs and a probe of its states side by side on identical answers.
+- **The confident tail.** How often a wrong answer comes with high confidence, by readout and kind (after Ji et al.'s "confident hallucination" and Navaie's point that safety lives in the tail).
 
 The lesson from two past winners (runaway-agent detection; omission attacks): one sharp claim, something usable, honest scope, a short report. Our edge is rigour; the risk is too much material.
 
@@ -28,6 +36,11 @@ Candidate explanations for the gap between what the model represents and what it
 | E1 Stereotype analysis | 6 | Within a level, stated confidence (A, D) is predicted at least as well by the question's details as by the hidden-state probe; on perception, by neither |
 | E2 Swap | 5 (and 1) | Asked about an answer placed in its own mouth, the model is nearly as sure of a wrong answer as of the right one, while the probe on the same answer tells them apart. Ownership bias (Sanz-Guerrero et al.) replicates and is largest on perception |
 | E3 Elicitation | 3 (and 2, via the base model) | P(True) and user framing beat stated confidence within levels on every kind but stay below the probe; the gap to the probe is largest on perception |
+| E3, own vs neutral P(True) | 5 | Placing the answer in the assistant turn raises mean P(True) but changes within-level AUROC by less than 0.05 |
+| E3, base vs instruct P(True) | 2 | The base model is better calibrated (lower ECE), but its within-level AUROC is within 0.05 of the instruct model's: instruction tuning moves the level, not the ranking |
+| Tail (all readouts) | 6 | For Qwen3-8B, most wrong answers (over half) get stated confidence ≥ 0.9 on computation and recall; the probe, at the same flag rate, gives high scores to fewer wrong answers |
+| E4 Directions and steering | 1, 6 | The stated-confidence direction and the correctness direction are far from aligned (cosine below 0.3); the former predicts correctness within levels worse than the probe; steering along the correctness direction moves stated confidence less than steering along the stated-confidence direction |
+| E5 LoRA on correctness | 4 | Training stated confidence on per-answer correctness raises its within-level AUROC towards the probe on recall and computation, not on perception; transfer to a kind not trained on is weak |
 
 ## Study (Step 1)
 
@@ -35,7 +48,7 @@ Before any code, check what is already known, and record it here:
 
 - **Ji et al. 2025**, [*Calibrating Verbal Uncertainty as a Linear Feature to Reduce Hallucinations*](https://arxiv.org/abs/2503.14477) (EMNLP 2025): verbal uncertainty as one direction, separate from the model's actual uncertainty, steered. Closest prior work to hypotheses 1 and 3. **Read 2026-11-14** (notes below).
 - **Kadavath et al. 2022**, [*Language Models (Mostly) Know What They Know*](https://arxiv.org/abs/2207.05221): P(True) exactly as they defined it (prompt, few-shot, which token), so E3 reproduces it. **Read 2026-11-14** (notes below).
-- **Lin, Hilton & Evans 2022**, [*Teaching Models to Express Their Uncertainty in Words*](https://arxiv.org/abs/2205.14334): the fine-tuning evidence for hypothesis 4 (stretch). **Read 2026-11-14** (notes below).
+- **Lin, Hilton & Evans 2022**, [*Teaching Models to Express Their Uncertainty in Words*](https://arxiv.org/abs/2205.14334): the fine-tuning evidence for hypothesis 4 (E5). **Read 2026-11-14** (notes below).
 - **Sanz-Guerrero, Mager & von der Wense 2026**, [*Large Language Models Are Overconfident in Their Own Responses*](https://arxiv.org/abs/2606.03437) (Findings of ACL 2026). Found by the user, 2026-11-12; **read in full 2026-11-14** (notes below). Ownership bias, instruction tuning and the user-framing fix. **This covers E2's attribution factor and part of hypothesis 2.**
 - A search for further prior work that puts a different answer in the model's mouth and asks for its confidence (prefill, self-preference), so E2's novelty is stated, not assumed.
 
@@ -115,7 +128,7 @@ Read from the arXiv HTML (v2): main text and limitations verbatim; appendix deta
 
 **What changes after Ji et al.**
 
-- *Hypothesis 1 and the steering stretch:* steering expressed uncertainty along one direction is done. What stays open is whether the direction behind **stated confidence** is the same as the direction that encodes **correctness**. The steering stretch is reframed around that (see Steps), starting with a cheap comparison on existing states: a stated-confidence direction (high vs low A, difference of means) against the correctness probe, by cosine and by within-level AUROC for correctness. Caveat: Qwen3-8B states ≥ 0.9 almost always, so the low set is small.
+- *Hypothesis 1 and steering (now E4):* steering expressed uncertainty along one direction is done. What stays open is whether the direction behind **stated confidence** is the same as the direction that encodes **correctness**. E4 is built around that, starting with a cheap comparison on existing states: a stated-confidence direction (high vs low A, difference of means) against the correctness probe, by cosine and by within-level AUROC for correctness. Caveat: Qwen3-8B states ≥ 0.9 almost always, so the low set is small.
 - *Framing:* "the words do not reflect the internal state" is not new for recall. What we add: correctness rather than sample disagreement as the reference; numeric stated confidence rather than hedging; three kinds of question; within levels; base models.
 - *Tail measure:* align with their "confident hallucination" (wrong and stated with high confidence) and cite it as precedent.
 - *Hypothesis 3:* they fix the gap by steering, not by asking differently, so E3 is not covered.
@@ -135,12 +148,12 @@ Read from the arXiv HTML (v2); venue not confirmed from the pages read.
 
 **What changes after Lin et al.**
 
-- *The LoRA stretch is sharpened:* Lin et al. trained on **sub-task accuracy**, which teaches the coarse self-knowledge (which levels are hard) that Phase 1 showed largely vanishes within levels. Our version trains stated confidence on **per-answer correctness** and is judged **within levels** against the probe. If it reaches the probe, hypothesis 4 (objective mismatch) holds; if it learns only the level, it is the stereotype again (hypothesis 6). A transfer test across kinds (train on one, test on the others) mirrors their shift test.
+- *E5 (LoRA) is sharpened:* Lin et al. trained on **sub-task accuracy**, which teaches the coarse self-knowledge (which levels are hard) that Phase 1 showed largely vanishes within levels. Our version trains stated confidence on **per-answer correctness** and is judged **within levels** against the probe. If it reaches the probe, hypothesis 4 (objective mismatch) holds; if it learns only the level, it is the stereotype again (hypothesis 6). A transfer test across kinds (train on one, test on the others) mirrors their shift test.
 - *E1 has a precedent:* their heuristic baseline (digits, operator, format) is our question-details probe. Cite it; ours is within levels and across three kinds.
 - *Related work:* Lin et al. is computation only, Ji et al. recall only; our three kinds side by side is new against both.
 - *A cheap alternative to fine-tuning:* many-shot stated confidence (50 labelled examples in the prompt) came close to fine-tuning for them; a possible E3 readout if time allows, not planned.
 
-Output: a short "what we add" paragraph, and any change to E1 to E3.
+Output: the *What we add* list under Contribution, and the changes to E1 to E3 above, now in the Design.
 
 ## Design
 
@@ -186,27 +199,46 @@ Within-level AUROC leads; ECE and Brier are reported alongside for comparison wi
 
 If one readout closes most of the gap to the probe, that is the usable result: which readout to trust, by kind of question. If none does, the information is there but asking cannot reach it.
 
-### From the sprint talks
+### E4 — Directions and steering (hypotheses 1 and 6)
 
-Proposed additions after Navaie's talk (2026-11-13; notes in the [sprint brief](epic2_sprint_brief_13-11-2026.md#talk-notes)), to review at the study step:
+Reframed after Ji et al., who showed that expressed uncertainty sits on one steerable direction. The open question is whether that direction is the one that encodes correctness.
 
-- **Report the tail as well as AUROC.** AUROC is an average; the safety-relevant number is how often a wrong answer comes with high confidence. For every readout in E2 and E3 (and Phase 1's A, D, B, E for reference): the share of wrong answers with confidence ≥ 0.9, and the share of answers given ≥ 0.9 that are wrong, by kind of question, with bootstrap intervals. For the probe, the same at the threshold that matches the readout's rate of ≥ 0.9 answers, so the comparison is fair. Phase 1 suggests this will be stark for Qwen3-8B, which states ≥ 0.9 almost always.
+- **Directions, on existing states (Mac or 4090).** A stated-confidence direction: difference of mean states between high and low A answers, at the layer and position of the Phase 1B probe. Compared with the correctness probe's direction by cosine, and each scored by within-level AUROC for correctness. Caveat: Qwen3-8B states ≥ 0.9 almost always, so the low set is small; use the lowest quartile, and Qwen3-1.7B as a check.
+- **Steering (4090).** Add the correctness direction, then the stated-confidence direction, at a few strengths, and measure stated confidence (A) and accuracy. If stated confidence follows its own direction but not the correctness one, the model represents correctness and reports something else. Ji et al.'s code (`facebookresearch/verbal_uncertainty_feature_calibration`) is a reference for the hooks.
+
+### E5 — LoRA on correctness (hypothesis 4)
+
+Sharpened after Lin et al., who trained on sub-task accuracy (the coarse, which-level-is-hard signal). A small LoRA on Qwen3-1.7B (Qwen3-8B if it fits) trains stated confidence against **per-answer correctness** on the 5,995 training questions, with the model's own answers and labels from Phase 1. Judged on the test set within levels against the probe, with ECE alongside. Transfer: train on two kinds, test on the third. If the trained confidence reaches the probe, the information was there and only the objective was missing; if it learns only the level, it is the stereotype again.
+
+### Reporting (applies to E1 to E5)
+
+From Navaie's talk (2026-11-13; notes in the [sprint brief](epic2_sprint_brief_13-11-2026.md#talk-notes)) and the study step:
+
+- **Report the tail as well as AUROC.** AUROC is an average; the safety-relevant number is how often a wrong answer comes with high confidence (Ji et al.'s "confident hallucination"). For stated confidence (A, D, post-hoc, user framing): the share of wrong answers with confidence ≥ 0.9, and the share of ≥ 0.9 answers that are wrong. For logit and probe readouts (P(True), E, the probe), whose scales differ (zero-shot P(True) sits near 0.5, per Kadavath et al.), the same at the threshold that flags the same share of answers as the stated readout's ≥ 0.9. By kind of question, with bootstrap intervals.
 - **State reliance conditions.** The "which readout to trust" result is stated with its limits: which models (small open Qwen3, thinking off; API models only if run), which kinds of question, which difficulty range, and what would change the conclusion.
 - **Say how we tried to break the claim.** A short section in the report: every pre-registered prediction with its outcome, failed ones included; the controls (layer-0 probe, difficulty held fixed, wrong answers by construction, the question-details probe); and the checks that could have overturned the main claim.
 
+## Code organisation (what the judges see)
+
+The repo is public and goes into the submission, so sprint work must be clearly separate from preexisting work while reusing it.
+
+- **Boundary.** A git tag `sprint-start` on `8ae8824`, the last commit before the sprint began (13 Nov 14:15 UTC). Everything in `experiments/epic2/phase1_confidence/`, `src/synapses/` and `data/epic2/confidence/` at that tag is preexisting; the README and the report link the tag.
+- **Phase 1 is read-only during the sprint.** No edits to `phase1_confidence/` or `src/synapses/`. If a bug is found there, fix it in a separate commit labelled as such and note it in the Phase 2 README, so the boundary stays honest.
+- **One reuse surface.** `phase2_confidence_gap/phase1.py` is the only file that reaches into Phase 1: it puts the Phase 1 folder and `src/` on the path and re-exports what Phase 2 uses (questions, prompts, grading and parsing from `confidence_task`; prompt building, encoding and extraction from `extract_states`; probe loading and scoring from `probe`; `auroc`, `stratified_auroc` and friends from `synapses.calibration`). Phase 2 scripts import from it, so a reader sees in one place exactly what is reused, and nothing is copied.
+- **New code only in `experiments/epic2/phase2_confidence_gap/`:** `README.md` (what is new, what is reused, how to reproduce, the preexisting-work statement), `phase1.py`, `analyze_stereotype.py` (E1), `build_swaps.py`, `swap_task.py` (Inspect task for E2 and P(True)), `extract_answers.py` (teacher-forced states for given answers, built on Phase 1's extraction instead of adding a flag to it), `analyze.py` (E2, E3, tail), `directions.py` and `steer.py` (E4), `lora/` (E5), `verify.py`, `plots.py`, `run_4090.sh`, `tests/`, and `results/` and `runs/` for outputs.
+- **New data** in `data/epic2/confidence/phase2/` (for example `swaps.jsonl`); Phase 1 data is only read.
+
 ## Steps
 
-1. **Study** (Thu 12 Nov). Above. *Gate: approve the plan after the study.*
-2. **E1** (Mac, Thu 12 Nov). `analyze_stereotype.py`, table and figure. Free, and a finding to bring to the sprint.
-3. **Build** (Mac). New folder `experiments/epic2/phase2_confidence_gap/`: `build_swaps.py` (wrong answers by construction, written to `data/epic2/confidence/swaps.jsonl`), an Inspect task for E2's conversations and P(True) (reusing Phase 1's prompts and grading), and `extract_states.py --answers` to teacher-force given answers. Unit tests on the wrong-answer builders (always wrong, always different from the correct and the own answer, plausible length).
-4. **4090 smoke runs** (`--limit`), then the full runs: E2 for three configs (base: P(True) only), E3 P(True) on test and training sets, extraction for E2's answers.
-5. **Analysis and figures.** Paired bootstrap CIs; the tail measures (confident wrong answers); a `verify.py` that recomputes every number in the report from the committed tables.
-6. **Report.** On the official template, 4 to 8 pages (hard cap) plus references and appendices, including the required Limitations and Dual-Use / Ethical Considerations appendix. Preexisting code is marked in the README (done for `phase1_confidence/`) and in the report. Also: key figure on page 1, related work stating exactly what is new, limitations, LLM usage statement, pre-registered predictions with outcomes, a "how we tried to break it" section and reliance conditions (see *From the sprint talks*), public code and data. State plainly that Phases 1 and 1B were done before the sprint. Then a third lifeandtimes post.
+1. **Study.** Done 2026-11-14 (above); plan approved.
+2. **Set up the boundary.** The `sprint-start` tag, the Phase 2 folder with `README.md` and `phase1.py`, and a test that `phase1.py` imports cleanly.
+3. **E1** (Mac). `analyze_stereotype.py`, table and figure. Alongside it, the search for prior work that puts an answer in the model's mouth (study list, last item).
+4. **Build E2 and E3** (Mac). `build_swaps.py` (wrong answers by construction), `swap_task.py` (reusing Phase 1's prompts and grading), `extract_answers.py`. Unit tests on the wrong-answer builders (always wrong, always different from the correct and the own answer, plausible length).
+5. **4090 smoke runs** (`--limit`), then the full runs: E2 for three configs (base: P(True) only), E3 P(True) on the test and training sets, extraction for E2's answers.
+6. **Analysis and figures for E1 to E3.** Paired bootstrap CIs; the tail measures; `verify.py`, which recomputes every number in the report from the committed tables.
+7. **E4** (directions on existing states, then steering on the 4090) and **E5** (LoRA on the 4090), each with its own smoke run, then into the analysis and `verify.py`.
+8. **Report.** On the official template, 4 to 8 pages (hard cap) plus references and appendices, including the required Limitations and Dual-Use / Ethical Considerations appendix. Preexisting code is marked in the README (done for `phase1_confidence/`) and in the report. Also: key figure on page 1, related work stating exactly what is new, limitations, LLM usage statement, pre-registered predictions with outcomes, a "how we tried to break it" section and reliance conditions (see *Reporting*), public code and data. State plainly that Phases 1 and 1B were done before the sprint. Then a third lifeandtimes post.
 
-**Stretch, only once E1 to E3 are done (both kept, 2026-11-14):**
-
-- *Directions and steering (hypothesis 1), reframed after Ji et al.* First, on existing states: a stated-confidence direction (difference of means, high vs low A) compared with the correctness probe, by cosine and within-level AUROC. Then, if worthwhile, steer along the correctness direction and see whether stated confidence follows.
-- *LoRA (hypothesis 4), sharpened after Lin et al.* A small LoRA on Qwen3-1.7B to state confidence against **per-answer correctness** (not sub-task accuracy as in Lin et al.), judged within levels against the probe, with a transfer test across kinds.
 
 ## Out of scope
 
