@@ -11,6 +11,11 @@ nothing is copied:
   extract   extract_states: CONFIGS, build_prompt, encode, extract, logged_answers, POSITIONS
   probe     probe: labels, load, logreg, metadata_features, within, KINDS, C_GRID
   analyze   analyze: load (one row per config x question x method), discrimination tables
+  probes_analysis
+            analyze_probes: family_map, add_strata (level and strict difficulty strata),
+            BEFORE / AFTER (the probe positions fixed in Phase 1B)
+  plots     plots: the figure style (palette, MODEL_NAME, KIND_COL, caption); importing it
+            sets matplotlib's rcParams. Phase 2 saves its own figures (not plots.save)
   cal       synapses.calibration: auroc, stratified_auroc, ece, brier, bootstrap_ci, reliability
 
 Paths to Phase 1 inputs (read only) are exported as PHASE1, PHASE1_RUNS, PHASE1_RESULTS,
@@ -43,7 +48,9 @@ for p in (PHASE1, ROOT / "src"):
 
 from synapses import calibration as cal  # noqa: E402  (numpy only)
 
-_LAZY = {"ct": "confidence_task", "extract": "extract_states", "probe": "probe", "analyze": "analyze"}
+_LAZY = {"ct": "confidence_task", "extract": "extract_states", "probe": "probe", "analyze": "analyze",
+         "probes_analysis": "analyze_probes", "plots": "plots"}
+PHASE1_QUESTIONS = ROOT / "data" / "epic2" / "confidence" / "questions.jsonl"
 
 
 def __getattr__(name: str) -> ModuleType:
@@ -55,5 +62,6 @@ def __getattr__(name: str) -> ModuleType:
     raise AttributeError(f"module 'phase1' has no attribute {name!r}")
 
 
-__all__ = ["HERE", "ROOT", "PHASE1", "PHASE1_RUNS", "PHASE1_RESULTS", "PHASE1_STATES", "DATA",
+__all__ = ["HERE", "ROOT", "PHASE1", "PHASE1_RUNS", "PHASE1_RESULTS", "PHASE1_STATES",
+           "PHASE1_QUESTIONS", "DATA",
            "RESULTS", "RUNS", "cal", *_LAZY]

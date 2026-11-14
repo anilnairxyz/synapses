@@ -15,8 +15,10 @@ Inputs read from Phase 1 (unchanged): the question sets in `data/epic2/confidenc
 ## Files
 
 - `phase1.py`: the reuse surface (above).
+- `analyze_stereotype.py`: E1, the stereotype analysis (Mac, Phase 1 outputs only). `--null` runs the shuffle check.
+- `results/`: tables, figures, and the findings so far ([`results/README.md`](results/README.md)).
 
-To come, per the plan: `analyze_stereotype.py` (E1); `build_swaps.py`, `swap_task.py`, `extract_answers.py` (E2, E3); `analyze.py`; `directions.py`, `steer.py` (E4); `lora/` (E5); `verify.py`; `plots.py`; `run_4090.sh`; `results/`, `runs/`.
+To come, per the plan: `build_swaps.py`, `swap_task.py`, `extract_answers.py` (E2, E3); `analyze.py`; `directions.py`, `steer.py` (E4); `lora/` (E5); `verify.py`; `plots.py`; `run_4090.sh`; `results/`, `runs/`.
 
 ## Fixes to preexisting code during the sprint
 

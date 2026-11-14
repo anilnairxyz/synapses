@@ -50,9 +50,9 @@ Before any code, check what is already known, and record it here:
 - **Kadavath et al. 2022**, [*Language Models (Mostly) Know What They Know*](https://arxiv.org/abs/2207.05221): P(True) exactly as they defined it (prompt, few-shot, which token), so E3 reproduces it. **Read 2026-11-14** (notes below).
 - **Lin, Hilton & Evans 2022**, [*Teaching Models to Express Their Uncertainty in Words*](https://arxiv.org/abs/2205.14334): the fine-tuning evidence for hypothesis 4 (E5). **Read 2026-11-14** (notes below).
 - **Sanz-Guerrero, Mager & von der Wense 2026**, [*Large Language Models Are Overconfident in Their Own Responses*](https://arxiv.org/abs/2606.03437) (Findings of ACL 2026). Found by the user, 2026-11-12; **read in full 2026-11-14** (notes below). Ownership bias, instruction tuning and the user-framing fix. **This covers E2's attribution factor and part of hypothesis 2.**
-- A search for further prior work that puts a different answer in the model's mouth and asks for its confidence (prefill, self-preference), so E2's novelty is stated, not assumed.
+- A search for further prior work that puts a different answer in the model's mouth and asks for its confidence (prefill, self-preference), so E2's novelty is stated, not assumed. **Done 2026-11-14** (notes below).
 
-Provenance of this list: Sanz-Guerrero et al. was found by the user; Kadavath et al., Ji et al. and Lin et al. were first cited from memory, then checked by search and read (2026-11-14); the descriptions above held up. The search in the last bullet has not been done, and Sanz-Guerrero et al. cite no prefill, self-preference or self-recognition work, so it cannot be borrowed from them.
+Provenance of this list: Sanz-Guerrero et al. was found by the user; Kadavath et al., Ji et al. and Lin et al. were first cited from memory, then checked by search and read (2026-11-14); the descriptions above held up. The search in the last bullet was done by a search agent on 2026-11-14; every paper below was checked against its arXiv page, but only abstracts and summaries were read, not full texts, so details are to be confirmed before citing.
 
 ### Sanz-Guerrero et al.: full read (2026-11-14)
 
@@ -153,6 +153,26 @@ Read from the arXiv HTML (v2); venue not confirmed from the pages read.
 - *Related work:* Lin et al. is computation only, Ji et al. recall only; our three kinds side by side is new against both.
 - *A cheap alternative to fine-tuning:* many-shot stated confidence (50 labelled examples in the prompt) came close to fine-tuning for them; a possible E3 readout if time allows, not planned.
 
+### Search: answers put in the model's mouth (2026-11-14)
+
+Abstract-level checks; read in full before citing any detail.
+
+- **Zhao et al. 2026**, *Wired for Overconfidence* ([arXiv 2604.01457](https://arxiv.org/abs/2604.01457), COLM 2026). **Closest prior work.** Qwen2.5 and Llama-3.2 answer factual questions, then give 0 to 99 confidence; they replace the assistant's wrong answer with the true one (and, in a robustness check, a plausible wrong one) and trace the circuit. The model is confident "in what it said, not in what is true": injecting the truth lowers confidence only modestly, about as much as a plausible wrong substitute. *Leaves open:* within-level discrimination, P(True), user vs assistant attribution, non-factual kinds, a probe on the same answers.
+- **Tsui 2026**, *Self-Correction Bench* ([arXiv 2507.02778](https://arxiv.org/abs/2507.02778), COLM 2026). The same injected error attributed to the model or the user: models fix the user's and miss their own (a 64.5% blind spot); "Wait" closes most of it. Attribution × injected wrong answers, but the outcome is correction, not confidence.
+- **Khullar, Hopkins, Wang, Roger 2026**, *Self-Attribution Bias* ([arXiv 2603.04582](https://arxiv.org/abs/2603.04582)). Monitors rate risky or incorrect actions as safer when they sit in an earlier assistant turn than in a user turn; *saying* the action is the monitor's own does not cause it. Directly relevant to our assistant-turn vs "My answer is X" contrast.
+- **Panickssery, Bowman, Feng 2024** ([arXiv 2404.13076](https://arxiv.org/abs/2404.13076), NeurIPS 2024): self-recognition and self-preference; reportedly a preference for texts falsely labelled as own (to confirm). **Wataoka et al. 2024** ([arXiv 2410.21819](https://arxiv.org/abs/2410.21819)): self-preference is largely a preference for low-perplexity text. **Chae et al. 2026** ([arXiv 2608.18091](https://arxiv.org/abs/2608.18091)): labels alone shift scores both ways.
+- **Wang et al. 2026**, *Prefill Awareness* ([arXiv 2606.12747](https://arxiv.org/abs/2606.12747)): frontier models sometimes notice inserted assistant turns (style mismatch drives it). **Nguyen et al. 2026** ([arXiv 2606.23671](https://arxiv.org/abs/2606.23671)): open models do not reliably notice adversarial prefills. **Lindsey 2025** ([arXiv 2601.01828](https://arxiv.org/abs/2601.01828)): introspective disavowal of prefills, unreliable.
+- **Sharma et al. 2023** ([arXiv 2310.13548](https://arxiv.org/abs/2310.13548)) and **Sicilia et al. 2025** ([arXiv 2410.14746](https://arxiv.org/abs/2410.14746)): user-suggested answers shift answers and uncertainty (the user arm only).
+- **Ghosh et al. 2026** ([arXiv 2610.25846](https://arxiv.org/abs/2610.25846)): verbal confidence vs probes vs semantic entropy on Qwen2.5; a prompt-only classifier often matches the probe (difficulty leaks into probes). **Cacioli 2026** ([arXiv 2604.24070](https://arxiv.org/abs/2604.24070)): Gemma 3 4B verbal AUROC about 0.55; probes reportedly higher (to confirm). **Kirch et al. 2025** ([arXiv 2511.17408](https://arxiv.org/abs/2511.17408)): probes trained on off-policy (injected) text can fail to transfer to on-policy text.
+- **Datta et al. 2026** ([arXiv 2604.00778](https://arxiv.org/abs/2604.00778)): letter counts are linearly decodable mid-network but suppressed late, so outputs are wrong; predicts a probe-vs-words gap on perception. No prior work found on verbal confidence or P(True) for letter-level tasks. **Gambardella et al. 2024** ([arXiv 2406.02356](https://arxiv.org/abs/2406.02356)): token confidence on multiplication by digit position.
+- Self-verification background: Huang et al. 2023 ([arXiv 2310.01798](https://arxiv.org/abs/2310.01798)); Tyen et al. 2023 ([arXiv 2311.08516](https://arxiv.org/abs/2311.08516)); Stechly et al. 2024 ([arXiv 2402.08115](https://arxiv.org/abs/2402.08115)).
+
+**What changes after the search.**
+
+- *Novelty of E2, restated:* injection with verbal confidence exists (Zhao et al., factual only); attribution with injected errors exists (Tsui; Khullar et al.; outcome not confidence). Still new: the full crossing (own / correct / wrong × assistant / user) measured as **within-level discrimination**; verbal, P(True) and the probe on the same teacher-forced answers; and perception alongside recall and computation.
+- *Must-cite:* Zhao et al.; Tsui; Khullar et al.; Panickssery et al. with Wataoka et al.; Wang et al. (prefill awareness); Ghosh et al. or Orgad et al. for probes.
+- *Design confounds to handle (proposed, for approval):* (1) **familiarity:** log each given answer's log-probability under the model and report results with it controlled, since wrong answers built by us may be less likely than the model's own; (2) **prefill noticing:** format the injected answers exactly as the model's own (same casing, length style, no extra words); (3) **difficulty leaking into probes:** already handled by within-level AUROC and the metadata probe; (4) **off-policy probes:** report the probe on injected answers separately from own answers rather than pooling.
+
 Output: the *What we add* list under Contribution, and the changes to E1 to E3 above, now in the Design.
 
 ## Design
@@ -232,7 +252,7 @@ The repo is public and goes into the submission, so sprint work must be clearly 
 
 1. **Study.** Done 2026-11-14 (above); plan approved.
 2. **Set up the boundary.** Done 2026-11-14: tag `sprint-start` pushed; `phase2_confidence_gap/` with `README.md` and `phase1.py`; `tests/test_phase2_boundary.py` (6 pass).
-3. **E1** (Mac). `analyze_stereotype.py`, table and figure. Alongside it, the search for prior work that puts an answer in the model's mouth (study list, last item).
+3. **E1** (Mac). Done 2026-11-14: `analyze_stereotype.py`; findings in [`results/README.md`](../experiments/epic2/phase2_confidence_gap/results/README.md). The prior-work search is done too (study notes above).
 4. **Build E2 and E3** (Mac). `build_swaps.py` (wrong answers by construction), `swap_task.py` (reusing Phase 1's prompts and grading), `extract_answers.py`. Unit tests on the wrong-answer builders (always wrong, always different from the correct and the own answer, plausible length).
 5. **4090 smoke runs** (`--limit`), then the full runs: E2 for three configs (base: P(True) only), E3 P(True) on the test and training sets, extraction for E2's answers.
 6. **Analysis and figures for E1 to E3.** Paired bootstrap CIs; the tail measures; `verify.py`, which recomputes every number in the report from the committed tables.
