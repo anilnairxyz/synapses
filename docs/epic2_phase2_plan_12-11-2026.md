@@ -200,9 +200,14 @@ Wrong answers are built to be plausible and certainly wrong:
 
 Right and wrong are known by construction, so only the model's own answers need Phase 1's labels; no new judging.
 
+**Confounds, from the prior-work search (added 2026-11-14):**
+
+- *Familiarity.* Models prefer text they find likely (Wataoka et al.), and wrong answers built by us may be less likely under the model than its own. Log each given answer's log-probability under the model (teacher-forced, from the same pass as the probe states), and report every E2 comparison also with it controlled: within-level AUROC of confidence after regressing out the answer's log-probability, and the paired right − wrong difference within log-probability bins.
+- *Noticing the insertion.* Models sometimes notice inserted assistant turns by their style (Wang et al.). Injected answers are formatted exactly as the model's own: same casing and number format, same length style, no added words; the format is copied from the model's own answer to that question where it has one. A check: the correct-answer cell, when it equals the model's own answer, should match the own-answer cell.
+
 **Measures.** Mean confidence per cell; paired difference correct − wrong per question, and within-level AUROC of confidence for correct vs wrong answers. Rationalisation predicts a small difference under *self* and a larger one under *user*.
 
-**Probe on the same answers.** Teacher-force the P prompt plus the correct or the wrong answer in the assistant turn: the same format the after-answer probe was trained on, with only the answer's source changed. Score with the Phase 1B after-answer probe. If the probe separates correct from wrong where the words do not, that is the knowing-vs-saying gap in one controlled experiment. Caveat (from Phase 1B): after-answer states encode the answer itself, so the layer-0 control is reported alongside.
+**Probe on the same answers.** Teacher-force the P prompt plus the correct or the wrong answer in the assistant turn: the same format the after-answer probe was trained on, with only the answer's source changed. Score with the Phase 1B after-answer probe. If the probe separates correct from wrong where the words do not, that is the knowing-vs-saying gap in one controlled experiment. Caveat (from Phase 1B): after-answer states encode the answer itself, so the layer-0 control is reported alongside. The probe was trained on the model's own answers; injected answers are off-policy text, on which probes can behave differently (Kirch et al.), so the probe is reported separately on own and on injected answers, never pooled. Difficulty leaking into the probe is already handled by within-level AUROC and the metadata probe.
 
 ### E3 — Elicitation
 
