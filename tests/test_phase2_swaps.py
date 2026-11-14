@@ -114,3 +114,13 @@ def test_ptrue_shots_and_block():
     b = ea.block("What is 2 × 3?", "6")
     assert b.startswith("Question: What is 2 × 3?\nProposed Answer: 6\nIs the proposed answer:")
     assert b.endswith("(A) True\n(B) False\nThe proposed answer is:")
+
+
+def test_parse_confidence():
+    import swap_task as st
+
+    assert st.parse_confidence('{"confidence": 0.85}') == 0.85
+    assert st.parse_confidence("0.9") == 0.9
+    assert st.parse_confidence("90%") == 0.9
+    assert st.parse_confidence("1.") == 1.0
+    assert st.parse_confidence("The answer is 4524, I am sure.") is None

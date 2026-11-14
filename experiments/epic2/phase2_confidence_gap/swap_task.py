@@ -24,6 +24,8 @@ per kind x source x attribution), max_tokens (default 64).
 from __future__ import annotations
 
 import json
+import math
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -32,7 +34,7 @@ from inspect_ai import Task, task
 from inspect_ai.dataset import MemoryDataset, Sample
 from inspect_ai.model import (ChatMessageAssistant, ChatMessageUser, GenerateConfig, ModelOutput,
                               get_model)
-from inspect_ai.scorer import Score, Target, mean, scorer
+from inspect_ai.scorer import Score, Target, metric, scorer
 from inspect_ai.solver import Generate, TaskState, solver
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # Inspect loads this file by path
@@ -75,6 +77,16 @@ def load(config: str, limit_per_cell: int | None) -> MemoryDataset:
     return MemoryDataset(samples, name=f"swap_{config}")
 
 
+def parse_confidence(text: str) -> float | None:
+    """The JSON's "confidence" (Phase 1's parsers); failing that, a reply that is just a
+    number ("0.9", "90%"): the instruct models sometimes skip the JSON wrapper."""
+    obj = phase1.ct.parse_json(text) or {}
+    c = phase1.ct.parse_prob(obj.get("confidence"))
+    if c is None and re.fullmatch(r"\s*-?\d+(?:\.\d+)?\s*%?\s*\.?\s*", text or ""):
+        c = phase1.ct.parse_prob(text.strip().rstrip("."))
+    return c
+
+
 @solver
 def ask_confidence(max_tokens: int):
     cfg = GenerateConfig(temperature=0.0, max_tokens=max_tokens,
@@ -87,8 +99,7 @@ def ask_confidence(max_tokens: int):
         try:
             out = await model.generate(messages(state.input_text, r["text"], att), config=cfg)
             text, cut = phase1.ct.strip_think(out.completion)
-            obj = phase1.ct.parse_json(text) or {}
-            rec = {"text": text, "confidence": phase1.ct.parse_prob(obj.get("confidence")),
+            rec = {"text": text, "confidence": parse_confidence(text),
                    "truncated": cut or out.stop_reason == "max_tokens"}
         except Exception as e:  # keep the run going; the record shows the error
             rec = {"error": f"{type(e).__name__}: {str(e)[:300]}", "confidence": None}
@@ -99,18 +110,38 @@ def ask_confidence(max_tokens: int):
     return solve
 
 
-@scorer(metrics=[mean()])
+def _mean_of(key: str):
+    def compute(scores) -> float:
+        vals = [getattr(s, "score", s).value.get(key) for s in scores]
+        vals = [v for v in vals if isinstance(v, (int, float)) and not math.isnan(v)]
+        return sum(vals) / len(vals) if vals else float("nan")
+    return compute
+
+
+@metric
+def mean_confidence():
+    """Mean of the parsed confidences (unparsed replies left out)."""
+    return _mean_of("confidence")
+
+
+@metric
+def parsed():
+    """Share of replies with a confidence that parsed."""
+    return _mean_of("parsed")
+
+
+@scorer(metrics=[mean_confidence(), parsed()])
 def confidence_record():
-    """Value = the parsed confidence (NaN if unparsed); the given answer's correctness and the
-    cell go into the score metadata for the analysis."""
+    """Value: the parsed confidence (NaN if unparsed) and whether it parsed; the given
+    answer's correctness and the cell go into the score metadata for the analysis."""
 
     async def score(state: TaskState, target: Target) -> Score:
         r, rec = state.metadata["swap"], state.metadata["result"]
         c = rec.get("confidence")
-        return Score(value=float("nan") if c is None else c,
+        return Score(value={"confidence": float("nan") if c is None else c, "parsed": float(c is not None)},
+                     answer=rec.get("text", ""),
                      metadata={"qid": r["qid"], "source": r["source"], "attribution": state.metadata["attribution"],
-                               "correct": r["correct"], "category": r["category"], "level": r["level"],
-                               "parse_ok": c is not None})
+                               "correct": r["correct"], "category": r["category"], "level": r["level"]})
 
     return score
 

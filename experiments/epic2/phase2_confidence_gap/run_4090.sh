@@ -48,6 +48,16 @@ if [ "$PART" = all ] || [ "$PART" = swap ]; then
       -T config=$name $SLIM --max-connections 64 --tags "$name" \
       --log-dir "$HERE/runs/4090/$MODE/$name" --display plain
     kill $pid; wait $pid 2> /dev/null
+    if [ "$MODE" = smoke ]; then  # show what the model actually replied
+      uv run --extra evals python - "$HERE/runs/4090/$MODE/$name" <<'PY'
+import glob, sys
+from inspect_ai.log import read_eval_log
+log = read_eval_log(sorted(glob.glob(sys.argv[1] + "/*.eval"))[-1])
+for s in log.samples[:12]:
+    sc = s.scores["confidence_record"]
+    print(f"  {s.id:28s} -> {sc.value['confidence']!s:5s} reply {sc.answer!r:.70}")
+PY
+    fi
   done
 fi
 echo "=== done $(date +%H:%M)"
