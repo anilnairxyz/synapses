@@ -34,12 +34,12 @@ Candidate explanations for the gap between what the model represents and what it
 Before any code, check what is already known, and record it here:
 
 - **Ji et al. 2025**, *Calibrating Verbal Uncertainty as a Linear Feature to Reduce Hallucinations*: verbal uncertainty as one direction, separate from the model's actual uncertainty, steered. Closest prior work to hypotheses 1 and 3; confirm the claim and what it leaves open.
-- **Kadavath et al. 2022**: P(True) exactly as they defined it (prompt, few-shot, which token), so E3 reproduces it.
+- **Kadavath et al. 2022**, [*Language Models (Mostly) Know What They Know*](https://arxiv.org/abs/2207.05221): P(True) exactly as they defined it (prompt, few-shot, which token), so E3 reproduces it. **Read 2026-11-14** (notes below).
 - **Lin, Hilton & Evans 2022**, *Teaching Models to Express Their Uncertainty in Words*: the fine-tuning evidence for hypothesis 4 (stretch).
 - **Sanz-Guerrero, Mager & von der Wense 2026**, [*Large Language Models Are Overconfident in Their Own Responses*](https://arxiv.org/abs/2606.03437) (Findings of ACL 2026). Found by the user, 2026-11-12; **read in full 2026-11-14** (notes below). Ownership bias, instruction tuning and the user-framing fix. **This covers E2's attribution factor and part of hypothesis 2.**
 - A search for further prior work that puts a different answer in the model's mouth and asks for its confidence (prefill, self-preference), so E2's novelty is stated, not assumed.
 
-Provenance of this list: Sanz-Guerrero et al. was found by the user; Kadavath et al. exists (checked by search, details not yet read); Ji et al. and Lin et al. are from memory and not yet checked against the source. The search in the last bullet has not been done, and Sanz-Guerrero et al. cite no prefill, self-preference or self-recognition work, so it cannot be borrowed from them.
+Provenance of this list: Sanz-Guerrero et al. was found by the user; Kadavath et al. was checked by search and then read; Ji et al. and Lin et al. are from memory and not yet checked against the source. The search in the last bullet has not been done, and Sanz-Guerrero et al. cite no prefill, self-preference or self-recognition work, so it cannot be borrowed from them.
 
 ### Sanz-Guerrero et al.: full read (2026-11-14)
 
@@ -66,6 +66,39 @@ Read from the arXiv HTML (v1). The prompt templates are images and were not read
 - *Hypothesis 2 via the base model:* they show instruction tuning hurts calibration, so our base-model P(True) mostly replicates that. The new question is whether it also hurts *discrimination*, given Phase 1B found base and instruct hold the same internal knowledge.
 
 The sharpest new angle: they measured how confident models are, never whether that confidence tells a right answer from a wrong one; their own plot suggests it does not, but unquantified. E2 and E3 measure exactly that, with the probe as the reference. Cite their 26% as an average absolute difference.
+
+### Kadavath et al.: read (2026-11-14)
+
+Read from the arXiv HTML (v4): all of the main text and the start of the appendices. Figures are images, so per-task, per-size P(True) numbers (AUROC, Brier, ECE) are not available, only the trends stated in the text.
+
+- **Models:** Anthropic pretrained models of 0.8B, 3B, 12B, 52B; RLHF policies appear only in the temperature section.
+- **Datasets:** multiple choice (BIG-Bench, MMLU, TruthfulQA, LogiQA, QuALITY); free answers (TriviaQA, LAMBADA, HumanEval, GSM8K, arithmetic, Python functions). Few-shot examples are drawn at random from the test set itself.
+- **P(True) prompt** (the model first answers at T = 1, then sees):
+
+  ```
+  Question: Who was the first president of the United States?
+  Proposed Answer: George Washington was the first president.
+  Is the proposed answer:
+  (A) True
+  (B) False
+  The proposed answer is:
+  ```
+
+  The readout is the probability on " (A)" vs " (B)"; whether they renormalise over the two is not stated. Either 20-shot or a fixed six-example prompt ("simply the first prompt we tried"). A *brainstorm* variant first shows five of the model's own samples, then asks about one; it "improves significantly" on short-answer tasks, less on GSM8K and code.
+- **Multiple choice:** large models are well calibrated if they see lettered options; better with size and with few-shot. "None of the above" hurts badly.
+- **P(True)** separates right from wrong better with size, but zero-shot it sits near 50% and is badly calibrated: "models do a good job separating correct and incorrect samples, but their calibration for P(True) is quite poor". Few-shot is needed for calibration.
+- **Own answers are harder to judge**, "since models tend to find their own samples more plausible"; a model has no explicit way to know whether tokens are its own or a third party's. This is the 2022 precursor of Sanz-Guerrero et al.'s ownership bias. Samples from smaller models are easier for every model to judge.
+- **P(IK):** a value head, with the whole model fine-tuned to predict the fraction of 30 T = 1 samples it gets right. 52B, AUROC on tasks outside training (TriviaQA only → all but GSM8K): arithmetic 0.93 → 0.99, GSM8K 0.62 → 0.75, LAMBADA 0.61 → 0.85. Responds to context: a Wikipedia article raised one question from 18% to 78%; bad or irrelevant hints lower it. All pooled across difficulty.
+- **RLHF:** policies "naively appear very miscalibrated", but one temperature, T = 2.5, "largely fixes" it on three evaluations; they caution that heavier RL might distort calibration beyond what temperature can fix.
+- **Entropy** of the answer is "not a robust measure" of knowing, especially for large models (relevant to our E).
+
+**What changes after Kadavath et al.**
+
+- *P(True) is specified* (see E3): their prompt verbatim; zero-shot and few-shot both reported; few-shot examples from the **training** questions with known labels, not from the test set as they did; probability renormalised over " (A)" and " (B)", one forward pass.
+- *Their format is already the observer framing:* "Proposed Answer" is plain text owned by no one. So P(True) is run with the prompt in the user turn (neutral) and, for the instruct models, with the model's answer in the assistant turn before it (own): an ownership test with the same readout.
+- *Calibration vs discrimination:* a temperature rescales confidence without changing its ranking, so calibration gaps like Sanz-Guerrero et al.'s can be partly cosmetic; discrimination cannot be fixed that way. This is why E2 and E3 lead with within-level AUROC; it also fits Phase 1B (base and instruct hold the same internal knowledge). ECE and Brier are reported alongside so the results compare with Sanz-Guerrero et al.
+- *Related work:* P(IK) is the trained precursor of our probe (correctness predicted before answering, from the model). Ours is a linear readout on frozen states, and is measured within levels; their AUROCs are pooled across difficulty, and arithmetic at 0.93 to 0.99 is very likely the coarse easy-vs-hard signal that Phase 1 showed shrinks within levels. "Own samples more plausible" is cited with Sanz-Guerrero et al. as the origin of the ownership idea.
+- *Optional readout:* brainstorm P(True), using the Phase 1 samples already drawn for B; tests whether showing the samples adds anything beyond B. Optional, so E3 does not grow.
 
 Output: a short "what we add" paragraph, and any change to E1 to E3.
 
@@ -104,9 +137,12 @@ Readouts of confidence in the model's own P answer, compared within levels again
 
 - **A**: stated with the answer (Phase 1, existing).
 - **Post-hoc verbal**: the *self / own answer* cell of E2.
-- **P(True)**: question plus the model's answer, "Is the proposed answer correct? (A) True (B) False", probability on True, following Kadavath et al. (one forward pass; open models, and API models with logprobs).
+- **P(True)**: Kadavath et al.'s prompt verbatim ("Question: … / Proposed Answer: … / Is the proposed answer: (A) True (B) False / The proposed answer is:"), probability on " (A)" renormalised over " (A)" and " (B)", one forward pass (open models, and API models with logprobs). Two placements: *neutral* (the whole prompt in the user turn) and *own* (the model's answer in the assistant turn first). Zero-shot and few-shot, the few-shot examples drawn from the training questions with known labels.
 - **User framing** (Sanz-Guerrero et al.'s fix): the *user / own answer* cell of E2.
-- **P(True), base model**: few-shot, which tests hypothesis 2 against the instruct model's P(True).
+- **P(True), base model**: few-shot (needed for calibration, per Kadavath et al.), which tests hypothesis 2 against the instruct model's P(True), for discrimination as well as calibration.
+- *Optional:* **brainstorm P(True)** (five Phase 1 samples shown first, as in Kadavath et al.), to see whether it adds anything beyond B.
+
+Within-level AUROC leads; ECE and Brier are reported alongside for comparison with Sanz-Guerrero et al.
 
 If one readout closes most of the gap to the probe, that is the usable result: which readout to trust, by kind of question. If none does, the information is there but asking cannot reach it.
 
