@@ -237,8 +237,10 @@ def check_reproduces_phase1b(config: str, rows: pd.DataFrame, scores: pd.DataFra
         mine = scores.loc[own, f"probe_{pos}"]
         theirs = rows.loc[own, "qid"].map(r)
         ok = theirs.notna()
+        diff = (mine[ok] - theirs[ok]).abs()
         print(f"  probe {pos}: own answers vs Phase 1B test scores, r = "
-              f"{np.corrcoef(mine[ok], theirs[ok])[0, 1]:.4f} on {int(ok.sum())}")
+              f"{np.corrcoef(mine[ok], theirs[ok])[0, 1]:.4f} on {int(ok.sum())}; median |diff| "
+              f"{diff.median():.3f}, max {diff.max():.3f} (score SD {theirs[ok].std():.3f})")
 
 
 # ----------------------------------------------------------------------------- main
