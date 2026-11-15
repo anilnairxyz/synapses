@@ -20,6 +20,8 @@ Inputs read from Phase 1 (unchanged; `../phase1_confidence/results/rows.parquet`
 - `swap_task.py`: E2's verbal confidence (Inspect, vLLM): each given answer in the assistant turn ("your answer") or from the user ("my answer").
 - `extract_answers.py`: on the 4090 (HF): states, answer log-probability and P(True) (user and assistant placement, 0- and 8-shot) for every given answer, then Phase 1B's probes refitted and scored on the new states (with a check that own answers reproduce Phase 1B's scores). Writes `results/extract_<config>.parquet`; states under `states/` (gitignored).
 - `directions.py`: E4 Part A (PC, CPU): which verbal confidence can be read linearly from the answer's state, and how its direction relates to the correctness probe's; saves the probe directions for steering.
+- `steer.py`: E4 Part B on the 4090 (HF): the E2 confidence conversations with the correctness probe's direction (or a random one) added at the probe's layer.
+- `analyze_steer.py`: E4 Part B analysis (Mac): shift per condition, probe vs random, separation and output collapse under steering.
 - `run_4090.sh`: `smoke` or `full`, optionally only `extract` or `swap`.
 - `results/`: tables, figures, and the findings so far ([`results/README.md`](results/README.md)).
 

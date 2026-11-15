@@ -110,3 +110,24 @@ Verbal self vs user on Qwen3-8B with thinking on (4090, vLLM; Phase 1's settings
 - **On computation, Qwen3-1.7B's "your answer" confidence is as readable from the state as its "my answer" confidence (0.47 vs 0.48) but follows the correctness probe far less (0.15 vs 0.38):** the report on its own answer reads something in the state, but not mainly the correctness signal. On recall both reports follow the probe equally (about 0.50).
 - **Raw-space cosines are uninformative.** Qwen3-8B computation: −0.94 against the correctness probe, but −0.96 against a probe trained on shuffled labels; fitted directions share the states' dominant axes. Elsewhere 0.06 to 0.27 against −0.16 to 0.04 for the shuffled baseline: small.
 - **Prediction (A)** ("'my answer' readable, Spearman ≥ 0.3 on recall and computation; cosine 0.2 to 0.5"): **readability supported** (0.46 to 0.66); **the cosine part is not testable in the raw state space** (the shuffled baseline is as large where the cosine is large).
+
+## E4 Part B — Steering along the correctness direction (2026-11-15)
+
+`steer.py` on the 4090 (HF): the Phase 1B correctness probe's direction (or a random direction of the same size) added after the layer the probe reads, at every position, while the model answers the E2 confidence question; strengths in SDs of the probe axis (±2, ±4, ±8) and in shares of the median state norm (±0.25, ±0.5). 50 answers per kind and source (own, correct, wrong), "your answer" and "my answer", greedy. The unsteered runs reproduce the E2 (vLLM) confidences on 98% (Qwen3-8B) and 94% (Qwen3-1.7B) of rows; replies parse at every strength (Qwen3-1.7B 97% at −0.5 of the norm). Analysis: `analyze_steer.py`; table `e4_steer_summary.csv`; figure `figures/e4_steer.png`.
+
+Shift = mean confidence at +8 SDs minus at −8 SDs (towards "right" minus towards "wrong"), 95% intervals over answers:
+
+| | "Your answer": probe | random | "My answer": probe | random |
+| --- | --- | --- | --- | --- |
+| Qwen3-8B recall | +0.02 | +0.02 | 0.00 | +0.05 |
+| Qwen3-8B computation | 0.00 | 0.00 | 0.00 | +0.01 |
+| Qwen3-8B perception | 0.00 | 0.00 | 0.00 | 0.00 |
+| Qwen3-1.7B recall | −0.22 [−0.26, −0.18] | −0.01 | +0.17 [0.11, 0.22] | +0.10 |
+| Qwen3-1.7B computation | −0.01 | −0.05 | −0.01 | −0.07 |
+| Qwen3-1.7B perception | −0.17 [−0.23, −0.10] | −0.31 | −0.04 | +0.17 |
+
+- **Qwen3-8B: a clean null.** No condition moves by more than 0.02 along the probe direction, even at half the state norm; the random direction does as much or more; separation of correct from wrong answers is unchanged by steering (computation 0.53 throughout).
+- **Qwen3-1.7B: changes, but not the probe's.** The one push in the predicted direction ("my answer", recall, +0.17) is not distinguishable from the random push (probe − random +0.06 [−0.01, 0.12]). The one clearly direction-specific effect goes the wrong way: pushing towards "right" lowers "your answer" confidence on recall (−0.22, random −0.01), as replies collapse to a constant `{"confidence": 0.5}`. At large pushes in shares of the norm, replies collapse to one constant for every answer (perception at −0.5 of the norm: `{"confidence": 0}` for all 150 "your answer" replies), which changes the output without carrying information about the answer.
+- **Prediction (B)** ("steering along the correctness direction moves 'my answer' confidence in the direction of the push, more than the random control, while 'your answer' barely moves"): **not supported.** Neither report follows the probe's direction more than a random push of the same size in Qwen3-8B; in Qwen3-1.7B the effects are inconsistent in sign and often matched by the random control.
+
+**What it means.** The correctness probe reads a signal that the "my answer" report correlates with (Part A), but that signal, at the probe's layer and direction, is not a lever on either report. Readable is not used: the model's verbal confidence, in either framing, is not computed from the direction a linear probe finds. Caveat: one layer and one direction per kind; the information could reach the report by other layers or positions (for example by recomputing at the confidence question), which this test does not rule out.
