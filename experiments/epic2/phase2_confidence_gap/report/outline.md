@@ -8,13 +8,9 @@ Template: `apart_template.docx` (Word / Google Docs), exported to PDF. Target 4 
 
 Why it matters (theory of change, one or two sentences in the intro, again in the discussion): stated confidence is used as evidence (by users, by evaluators, by monitors and agents rating their own earlier output). Our result says when that evidence is worth something and when it is not, and which readouts to use instead. It is an instance of Navaie's point that unverified evidence should not carry weight: here the model itself does not verify.
 
-## Title (pick one, or write your own)
+## Title
 
-- *Certain of Whatever It Said: Language Models Check the User's Answers, Not Their Own*
-- *Confidence Without Checking: Why LLM Confidence Reports Miss What the Model Knows*
-- *Models Don't Check Their Own Answers: Confidence Tracks Correctness Only When the Model Verifies*
-
-Recommendation: the first. It states the finding; "check" is the mechanism the paper supports.
+**LLMs are too certain of whatever they said** (chosen 2026-11-15, working title). The reasoning models are the exception, so the abstract and introduction should say early that the claim is about models that answer without reasoning first.
 
 ## Abstract (150 to 250 words; write last)
 
