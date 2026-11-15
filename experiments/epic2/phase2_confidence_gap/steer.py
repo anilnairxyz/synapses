@@ -11,10 +11,12 @@ position, during the prompt and the reply:
   direction  "probe"   the correctness probe's unit direction for the question's kind
                        (directions.py, results/e4_probe_dirs.npz)
              "random"  a random unit direction (fixed seed), the control
-  strength   alpha x s, alpha in ALPHAS, s = the standard deviation of the E2 answer states'
-             projection on the probe direction at that layer (so alpha = 1 moves a state by
-             one typical spread along the correctness axis); the random direction gets the
-             same absolute size
+  strength   alpha x s, alpha in ALPHAS (up to +-8), s = the standard deviation of the E2
+             answer states' projection on the probe direction at that layer (so alpha = 1
+             moves a state by one typical spread along the correctness axis, i.e. the probe's
+             score by one SD); the random direction gets the same absolute size. Each push is
+             also printed as a share of the median state norm, since the probe axes differ a
+             lot in spread (Qwen3-8B: computation s = 0.17 at norm 137, recall 7.2 at 262)
   attribution  "self" (the answer in the assistant turn, "your answer") or "user" ("my
              answer"), exactly as in swap_task.py
 
@@ -48,7 +50,7 @@ import analyze_swaps as an
 import phase1
 import swap_task as st
 
-ALPHAS = (-4.0, -2.0, 0.0, 2.0, 4.0)
+ALPHAS = (-8.0, -4.0, -2.0, 0.0, 2.0, 4.0, 8.0)
 DIRECTIONS = ("probe", "random")
 PER_CELL = 50  # answers per kind x source: 3 x 3 x 50 = 450 rows, about 300 to 450 answers
 KINDS = ("recall", "computation", "perception")
@@ -62,9 +64,8 @@ def sample_rows(config: str, per_cell: int) -> pd.DataFrame:
     sw = pd.read_json(phase1.DATA / "swaps.jsonl", lines=True)
     sw = sw[(sw.config == config) & (sw.split == "test")][["qid", "source", "text", "correct"]]
     d = meta.reset_index().merge(sw, on=["qid", "source"], how="left", validate="one_to_one")
-    return (d.groupby(["category", "source"], group_keys=False)
-             .apply(lambda g: g.sample(min(per_cell, len(g)), random_state=SEED))
-             .reset_index(drop=True))
+    n = min(per_cell, int(d.groupby(["category", "source"]).size().min()))
+    return d.groupby(["category", "source"]).sample(n=n, random_state=SEED).reset_index(drop=True)
 
 
 def messages(q: str, answer: str, attribution: str) -> list[dict]:
@@ -88,7 +89,10 @@ def steer_vectors(config: str, d: pd.DataFrame) -> dict[str, dict]:
         s = float((X @ w).std())
         r = rng.normal(size=w.shape).astype(np.float32)
         out[kind] = {"layer": layer, "probe": w, "random": r / np.linalg.norm(r), "s": s}
-        print(f"  {kind}: layer {layer}, step s = {s:.2f} (median state norm {np.median(np.linalg.norm(X, axis=1)):.1f})")
+        norm = float(np.median(np.linalg.norm(X, axis=1)))
+        out[kind]["norm"] = norm
+        print(f"  {kind}: layer {layer}, step s = {s:.2f} (median state norm {norm:.1f}); largest push "
+              f"{max(ALPHAS) * s / norm:.1%} of the norm, {max(ALPHAS):.0f} SDs along the probe axis")
     return out
 
 
