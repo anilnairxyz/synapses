@@ -215,7 +215,7 @@ E2's central result (verbal confidence in an answer placed in the model's own tu
 
 - **Claude Haiku 5.5** (API, from the Mac): its Phase 1 answers exist, so own / correct / wrong answers are built as for Qwen. Verbal self vs user only (no log-probabilities, so no P(True) or familiarity control).
 - **Qwen3-8B with thinking on** (4090): Phase 1 answers exist. Tsui (Self-Correction Bench) found that reasoning-trained models do not show the self-correction blind spot; does thinking before the confidence remove the "certain of whatever it said" effect? Verbal self vs user; P(True) and the likelihood control as for the other Qwen configs if the thinking trace can be handled (otherwise verbal only).
-- **Optional, at the office (Foundry):** GPT-5 nano, Grok 4.1 Fast, GPT-4o, verbal self vs user.
+- **At the office (Foundry; confirmed 2026-11-15):** GPT-5 nano, Grok 4.1 Fast, GPT-4o, verbal self vs user, from a self-contained bundle (`office/`), with Phase 1's per-model settings (Grok non-reasoning and GPT-4o with max_tokens raised for the working; GPT-5 nano at its default temperature, reasoning effort low).
 
 Prediction (written before the runs): Claude Haiku shows the same pattern (separation under "your answer" within 0.05 of 0.5 on at least two kinds, and higher under "my answer"); thinking reduces but does not remove it (separation under "your answer" above 0.5 but below "my answer").
 
@@ -245,7 +245,7 @@ The first design compared a direction behind stated confidence with the correctn
 
 Predictions (written before the runs): (A) "my answer" confidence is readable from the answer's states (out-of-fold within-stratum Spearman ≥ 0.3 on recall and computation) and its direction partly overlaps the correctness direction (cosine 0.2 to 0.5, far above the random baseline); (B) steering along the correctness direction moves "my answer" confidence in the direction of the push, more than the random control, while "your answer" confidence barely moves (change under 0.05 at the strengths where "my answer" moves by 0.1 or more). If (B) holds, the model represents whether the answer is right and uses it when judging someone else's answer, but the report on its own answer does not read it.
 
-### E5 — Can training make the own-answer report read what the model knows? (hypothesis 4; detailed 2026-11-15)
+### E5 — Can training make the own-answer report read what the model knows? (hypothesis 4; detailed 2026-11-15; full version confirmed by the user)
 
 Sharpened after Lin et al. (trained on sub-task accuracy, the coarse which-level-is-hard signal) and after E2 and E4 (the report on an answer in the model's own turn barely separates right from wrong, and pushing the probe's direction does not move it).
 
@@ -288,7 +288,7 @@ The repo is public and goes into the submission, so sprint work must be clearly 
 5. **4090 smoke runs** (`--limit`), then the full runs (done 2026-11-14/15; outputs complete, probe check reproduces Phase 1B, every swap reply parsed): E2 for three configs (base: P(True) only), E3 P(True) on the test and training sets, extraction for E2's answers.
 6. **Analysis and figures for E1 to E3.** E2/E3 done 2026-11-15 (`analyze_swaps.py`; findings and prediction outcomes in the Phase 2 [`results/README.md`](../experiments/epic2/phase2_confidence_gap/results/README.md)); `verify.py` to come. Paired bootstrap CIs; the tail measures; `verify.py`, which recomputes every number in the report from the committed tables.
 7. **E2b** (beyond Qwen): `build_swaps.py` and `swap_task.py` extended to claude-haiku and qwen3-8b-think; Haiku from the Mac, thinking on the 4090; into `analyze_swaps.py`. Done before E4 and E5 because it tests whether the main result generalises, while E4 and E5 explain it within Qwen; E4 is built while E2b runs.
-8. **E4** (Part A readouts on existing states, `directions.py`, PC CPU; then Part B steering, `steer.py`, 4090): done 2026-11-15. **E5** (`lora_confidence.py`: train and evaluate on the 4090; analysis on the Mac), with its own smoke run.
+8. **E4** (Part A readouts on existing states, `directions.py`, PC CPU; then Part B steering, `steer.py`, 4090): done 2026-11-15. **E5** (`lora_confidence.py`: train and evaluate on the 4090; analysis on the Mac), full version, with its own smoke run. **E2b on Foundry** (GPT-5 nano, Grok 4.1 Fast, GPT-4o): a self-contained `office/` bundle, run by the user at the office.
 9. **Report.** On the official template, 4 to 8 pages (hard cap) plus references and appendices, including the required Limitations and Dual-Use / Ethical Considerations appendix. Preexisting code is marked in the README (done for `phase1_confidence/`) and in the report. Also: key figure on page 1, related work stating exactly what is new, limitations, LLM usage statement, pre-registered predictions with outcomes, a "how we tried to break it" section and reliance conditions (see *Reporting*), public code and data. State plainly that Phases 1 and 1B were done before the sprint. Then a third lifeandtimes post.
 
 
