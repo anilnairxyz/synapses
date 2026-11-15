@@ -209,6 +209,16 @@ Right and wrong are known by construction, so only the model's own answers need 
 
 **Probe on the same answers.** Teacher-force the P prompt plus the correct or the wrong answer in the assistant turn: the same format the after-answer probe was trained on, with only the answer's source changed. Score with the Phase 1B after-answer probe. If the probe separates correct from wrong where the words do not, that is the knowing-vs-saying gap in one controlled experiment. Caveat (from Phase 1B): after-answer states encode the answer itself, so the layer-0 control is reported alongside. The probe was trained on the model's own answers; injected answers are off-policy text, on which probes can behave differently (Kirch et al.), so the probe is reported separately on own and on injected answers, never pooled. Difficulty leaking into the probe is already handled by within-level AUROC and the metadata probe.
 
+### E2b — Beyond Qwen (added 2026-11-15, after E2)
+
+E2's central result (verbal confidence in an answer placed in the model's own turn does not separate right from wrong, while the same answer framed as the user's partly does) rests on two models of one family. E2b repeats the verbal self vs user swap where it is cheapest and most informative:
+
+- **Claude Haiku 5.5** (API, from the Mac): its Phase 1 answers exist, so own / correct / wrong answers are built as for Qwen. Verbal self vs user only (no log-probabilities, so no P(True) or familiarity control).
+- **Qwen3-8B with thinking on** (4090): Phase 1 answers exist. Tsui (Self-Correction Bench) found that reasoning-trained models do not show the self-correction blind spot; does thinking before the confidence remove the "certain of whatever it said" effect? Verbal self vs user; P(True) and the likelihood control as for the other Qwen configs if the thinking trace can be handled (otherwise verbal only).
+- **Optional, at the office (Foundry):** GPT-5 nano, Grok 4.1 Fast, GPT-4o, verbal self vs user.
+
+Prediction (written before the runs): Claude Haiku shows the same pattern (separation under "your answer" within 0.05 of 0.5 on at least two kinds, and higher under "my answer"); thinking reduces but does not remove it (separation under "your answer" above 0.5 but below "my answer").
+
 ### E3 — Elicitation
 
 Readouts of confidence in the model's own P answer, compared within levels against the probe (ceiling) and B, E (behaviour):
@@ -263,8 +273,9 @@ The repo is public and goes into the submission, so sprint work must be clearly 
 4. **Build E2 and E3** (Mac). Done 2026-11-14 (see the Phase 2 README); P(True) uses 8 worked examples and, for the instruct models, the assistant's reply started with "(" so the next token is the letter. `build_swaps.py` (wrong answers by construction), `swap_task.py` (reusing Phase 1's prompts and grading), `extract_answers.py`. Unit tests on the wrong-answer builders (always wrong, always different from the correct and the own answer, plausible length).
 5. **4090 smoke runs** (`--limit`), then the full runs (done 2026-11-14/15; outputs complete, probe check reproduces Phase 1B, every swap reply parsed): E2 for three configs (base: P(True) only), E3 P(True) on the test and training sets, extraction for E2's answers.
 6. **Analysis and figures for E1 to E3.** E2/E3 done 2026-11-15 (`analyze.py`; findings and prediction outcomes in the Phase 2 [`results/README.md`](../experiments/epic2/phase2_confidence_gap/results/README.md)); `verify.py` to come. Paired bootstrap CIs; the tail measures; `verify.py`, which recomputes every number in the report from the committed tables.
-7. **E4** (directions on existing states, then steering on the 4090) and **E5** (LoRA on the 4090), each with its own smoke run, then into the analysis and `verify.py`.
-8. **Report.** On the official template, 4 to 8 pages (hard cap) plus references and appendices, including the required Limitations and Dual-Use / Ethical Considerations appendix. Preexisting code is marked in the README (done for `phase1_confidence/`) and in the report. Also: key figure on page 1, related work stating exactly what is new, limitations, LLM usage statement, pre-registered predictions with outcomes, a "how we tried to break it" section and reliance conditions (see *Reporting*), public code and data. State plainly that Phases 1 and 1B were done before the sprint. Then a third lifeandtimes post.
+7. **E2b** (beyond Qwen): `build_swaps.py` and `swap_task.py` extended to claude-haiku and qwen3-8b-think; Haiku from the Mac, thinking on the 4090; into `analyze.py`. Done before E4 and E5 because it tests whether the main result generalises, while E4 and E5 explain it within Qwen; E4 is built while E2b runs.
+8. **E4** (directions on existing states, then steering on the 4090) and **E5** (LoRA on the 4090), each with its own smoke run, then into the analysis and `verify.py`. E5 is the first to cut if time runs short.
+9. **Report.** On the official template, 4 to 8 pages (hard cap) plus references and appendices, including the required Limitations and Dual-Use / Ethical Considerations appendix. Preexisting code is marked in the README (done for `phase1_confidence/`) and in the report. Also: key figure on page 1, related work stating exactly what is new, limitations, LLM usage statement, pre-registered predictions with outcomes, a "how we tried to break it" section and reliance conditions (see *Reporting*), public code and data. State plainly that Phases 1 and 1B were done before the sprint. Then a third lifeandtimes post.
 
 
 ## Out of scope
