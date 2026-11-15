@@ -19,7 +19,7 @@
 
 ## E2 and E3 — Swap and elicitation (2026-11-15)
 
-`analyze.py` on the full 4090 run (`extract_<config>.parquet`, the swap logs) with Phase 1's methods and Phase 1B's out-of-fold probe scores. Tables: `e2_means.csv`, `e2_separation.csv`, `e3_auroc.csv`, `e3_calibration.csv`, `tail.csv`, `tail_quarter.csv`, `ptrue_excluded.csv`. Figures: `figures/e2_separation.png` (key figure), `figures/e2_means.png`, `figures/e3_readouts.png`.
+`analyze_swaps.py` on the full 4090 run (`extract_<config>.parquet`, the swap logs) with Phase 1's methods and Phase 1B's out-of-fold probe scores. Tables: `e2_means.csv`, `e2_separation.csv`, `e3_auroc.csv`, `e3_calibration.csv`, `tail.csv`, `tail_quarter.csv`, `ptrue_excluded.csv`. Figures: `figures/e2_separation.png` (key figure), `figures/e2_means.png`, `figures/e3_readouts.png`.
 
 **Run checks.** Every swap reply parsed (2,658 and 2,676, no errors). The refitted probes reproduce Phase 1B on the model's own answers (r = 0.9999 for Qwen3-8B and the base model on both positions; 0.9959 before / 0.9997 after for Qwen3-1.7B). P(True) answers left out under the rule fixed before analysis (< 0.5 probability on the two letters): 16 of 7,075 (Qwen3-8B) and 236 of 7,084 (Qwen3-1.7B), all in the neutral zero-shot variant.
 

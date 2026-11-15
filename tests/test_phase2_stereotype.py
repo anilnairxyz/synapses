@@ -39,7 +39,7 @@ def test_null_centres_on_zero():
 
 def test_win_rate_and_within_auroc():
     sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "experiments/epic2/phase2_confidence_gap"))
-    import analyze as an
+    import analyze_swaps as an
 
     c = np.array([0.9, 0.5, 0.7, np.nan])
     w = np.array([0.1, 0.5, 0.8, 0.2])

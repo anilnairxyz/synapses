@@ -22,7 +22,7 @@ Inputs read from Phase 1 (unchanged): the question sets in `data/epic2/confidenc
 - `run_4090.sh`: `smoke` or `full`, optionally only `extract` or `swap`.
 - `results/`: tables, figures, and the findings so far ([`results/README.md`](results/README.md)).
 
-- `analyze.py`: E2 and E3 analysis (Mac): separation of correct vs planted wrong answers per readout and attribution, with the familiarity control; readouts of confidence in own answers against the probe; calibration; the confident tail. Findings in [`results/README.md`](results/README.md).
+- `analyze_swaps.py`: E2 and E3 analysis (Mac): separation of correct vs planted wrong answers per readout and attribution, with the familiarity control; readouts of confidence in own answers against the probe; calibration; the confident tail. Findings in [`results/README.md`](results/README.md).
 
 To come, per the plan: `directions.py`, `steer.py` (E4); `lora/` (E5); `verify.py`; `plots.py`; `run_4090.sh`; `results/`, `runs/`.
 

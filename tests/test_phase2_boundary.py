@@ -54,3 +54,11 @@ def test_lazy_import_survives_sys_path_reset(monkeypatch):
     monkeypatch.delitem(sys.modules, "analyze_probes", raising=False)
     monkeypatch.delitem(phase1.__dict__, "probes_analysis", raising=False)
     assert phase1.probes_analysis.BEFORE == "gen"
+
+
+def test_no_module_name_shared_with_phase1():
+    """phase1.py puts Phase 1's folder first on sys.path, so a Phase 2 module with a Phase 1
+    module's name could be shadowed (Phase 2's analyze.py was renamed for this reason)."""
+    p1 = {p.stem for p in phase1.PHASE1.glob("*.py")}
+    p2 = {p.stem for p in PHASE2.glob("*.py")} - {"phase1"}
+    assert p1 & p2 == set()

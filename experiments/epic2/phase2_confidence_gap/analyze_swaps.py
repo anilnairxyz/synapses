@@ -49,7 +49,7 @@ states >= 0.9 on every answer): the error rate among each readout's most confide
 Writes results/e2_means.csv, e2_separation.csv, e3_auroc.csv, e3_calibration.csv,
 tail.csv, tail_quarter.csv, ptrue_excluded.csv, and figures e2_separation.png, e2_means.png, e3_readouts.png.
 
-    uv run --extra evals python experiments/epic2/phase2_confidence_gap/analyze.py
+    uv run --extra evals python experiments/epic2/phase2_confidence_gap/analyze_swaps.py
 """
 
 from __future__ import annotations
