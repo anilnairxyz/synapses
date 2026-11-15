@@ -62,6 +62,8 @@ import pandas as pd
 import phase1
 
 CONFIGS = ("qwen3-8b", "qwen3-1.7b", "qwen3-8b-base")
+E2B = ("claude-haiku", "qwen3-8b-think")  # verbal only (E2b)
+SWAP_RUNS = {"claude-haiku": "api/full", "qwen3-8b-think": "4090/full"}
 INSTRUCT = ("qwen3-8b", "qwen3-1.7b")
 KINDS = ("recall", "computation", "perception")
 PTRUE = ("ptrue_user_0", "ptrue_user_8", "ptrue_assistant_0", "ptrue_assistant_8")
@@ -124,7 +126,10 @@ def swaps_verbal(config: str) -> pd.DataFrame:
     """qid, source, verbal_self, verbal_user from the full swap log."""
     from inspect_ai.log import read_eval_log
 
-    (f,) = glob.glob(str(phase1.RUNS / "4090" / "full" / config / "*.eval"))
+    files = sorted(glob.glob(str(phase1.RUNS / SWAP_RUNS.get(config, "4090/full") / config / "*.eval")))
+    if len(files) != 1:
+        raise FileNotFoundError(f"expected one swap log for {config}, found {len(files)}")
+    f = files[0]
     rows = []
     for s in read_eval_log(f).samples:
         m = s.scores["confidence_record"].metadata
@@ -155,6 +160,7 @@ def e2(d: pd.DataFrame, config: str) -> tuple[list[dict], list[dict]]:
     t = d[d.split == "test"]
     means, sep = [], []
     readouts = [r for r in E2_READOUTS if r in t and t[r].notna().any()]
+    has_lp = "logprob" in t and t.logprob.notna().any()
     for kind in KINDS:
         k = t[t.category == kind]
         for r in readouts:
@@ -167,8 +173,9 @@ def e2(d: pd.DataFrame, config: str) -> tuple[list[dict], list[dict]]:
             means.append(row)
         inj = k[k.source.isin(["correct", "wrong"])]
         piv = inj.pivot_table(index="qid", columns="source", values=list(readouts), dropna=False)
-        bands = pd.qcut(inj.logprob.rank(method="first"), 5, labels=False).astype(str)
-        strata_lp = (inj.stratum + ":lp" + bands).to_numpy()
+        if has_lp:
+            bands = pd.qcut(inj.logprob.rank(method="first"), 5, labels=False).astype(str)
+            strata_lp = (inj.stratum + ":lp" + bands).to_numpy()
         for r in readouts:
             c, w = piv[(r, "correct")].to_numpy(float), piv[(r, "wrong")].to_numpy(float)
             est, lo, hi = with_ci(win_rate, len(c), c, w)
@@ -178,7 +185,7 @@ def e2(d: pd.DataFrame, config: str) -> tuple[list[dict], list[dict]]:
             s, y = inj[r].to_numpy(float), inj.correct.to_numpy()
             row["auroc"], row["auroc_lo"], row["auroc_hi"] = with_ci(
                 within_auroc, len(s), s, y, inj.stratum.to_numpy(), seed=1)
-            if r != "logprob":
+            if r != "logprob" and has_lp:
                 row["auroc_lp"], row["auroc_lp_lo"], row["auroc_lp_hi"] = with_ci(
                     within_auroc, len(s), s, y, strata_lp, seed=2)
             sep.append(row)
@@ -194,6 +201,14 @@ def e2(d: pd.DataFrame, config: str) -> tuple[list[dict], list[dict]]:
                     means.append({"config": config, "kind": kind, "readout": name, "source": src,
                                   "own_minus_user": float(dd.mean()), "lo": lo, "hi": hi})
     return means, sep
+
+
+def verbal_only(config: str) -> pd.DataFrame:
+    """E2b: the swap rows (test) with the verbal readouts; no P(True), probe or likelihood."""
+    d = pd.read_json(phase1.DATA / "swaps.jsonl", lines=True)
+    d = d[(d.config == config) & (d.split == "test")].drop(columns=["text"])
+    d["stratum"] = d.category + ":" + d.level.astype(str) + ":" + d.family.fillna("")
+    return d.merge(swaps_verbal(config), on=["qid", "source"], how="left")
 
 
 # ----------------------------------------------------------------------------- E3
@@ -376,6 +391,44 @@ def fig_separation(sep: pd.DataFrame) -> None:
     save(fig, "e2_separation")
 
 
+def fig_ownership(sep: pd.DataFrame) -> None:
+    """Key figure: separation under "your answer" vs "my answer", every model with verbal readouts."""
+    pl = phase1.plots
+    import matplotlib.pyplot as plt
+
+    models = [c for c in ("qwen3-1.7b", "qwen3-8b", "qwen3-8b-think", "claude-haiku") if c in set(sep.config)]
+    fig, axes = plt.subplots(1, 3, figsize=(10.5, 3.6), sharey=True, sharex=True)
+    for c, kind in enumerate(KINDS):
+        ax = axes[c]
+        for i, cfg in enumerate(models):
+            g = sep[(sep.config == cfg) & (sep.kind == kind)].set_index("readout")
+            for r, colour, dy in (("verbal_self", pl.ORANGE, -0.13), ("verbal_user", pl.BLUE, 0.13)):
+                if r not in g.index:
+                    continue
+                y = i + dy
+                ax.plot([g.loc[r, "win_lo"], g.loc[r, "win_hi"]], [y, y], color=colour, lw=1.5, alpha=0.6)
+                ax.plot(g.loc[r, "win"], y, "o", color=colour, ms=6.5, mec=pl.SURFACE, mew=1,
+                        label=NAMES[r] if (c == 0 and i == 0) else None)
+        ax.axvline(0.5, color=pl.MUTED, lw=0.8)
+        ax.set_yticks(range(len(models)), [pl.MODEL_NAME[m] for m in models])
+        ax.set_xlim(0.35, 1.03)
+        ax.set_title(kind.capitalize())
+        if c == 0:
+            ax.invert_yaxis()
+    h, lab = axes[0].get_legend_handles_labels()
+    fig.legend(h, lab, loc="upper center", ncol=2, bbox_to_anchor=(0.5, 1.06))
+    fig.suptitle("Asked about an answer in its own turn, a model tells right from wrong far less well",
+                 y=1.13, fontweight="bold")
+    fig.supxlabel("Share of questions where the correct answer gets more confidence (0.5 = none)",
+                  fontsize=10, color=pl.INK2)
+    pl.caption(fig, "Same question, a correct and a plausible wrong answer (built by construction, in the "
+                    "model's own format). \"Your answer\": the answer sits in the assistant turn and the user "
+                    "asks for the probability it is correct. \"My answer\": the user gives the same answer as "
+                    "theirs. 150 questions per kind, 95% bootstrap intervals.", y=-0.06)
+    fig.tight_layout()
+    save(fig, "e2_ownership")
+
+
 def fig_means(means: pd.DataFrame) -> None:
     pl = phase1.plots
     import matplotlib.pyplot as plt
@@ -471,6 +524,16 @@ def main() -> None:
         tl += tail(d, config)
         tq += tail_quarter(d, config)
         print("done", config)
+    for config in E2B:
+        try:
+            d = verbal_only(config)
+        except FileNotFoundError as e:
+            print("skipped", config, "-", e)
+            continue
+        m, s = e2(d, config)
+        means += m
+        sep += s
+        print("done", config, "(verbal only)")
     out = {"e2_means": means, "e2_separation": sep, "e3_auroc": auc, "e3_calibration": cal,
            "tail": tl, "tail_quarter": tq, "ptrue_excluded": exc}
     frames = {k: pd.DataFrame(v) for k, v in out.items()}
@@ -479,7 +542,8 @@ def main() -> None:
     with pd.option_context("display.width", 220, "display.max_rows", 300, "display.max_columns", 30):
         s = frames["e2_separation"]
         print(s[["config", "kind", "readout", "n_pairs", "win", "win_lo", "win_hi", "auroc_lp"]].round(2).to_string(index=False))
-    fig_separation(frames["e2_separation"])
+    fig_separation(frames["e2_separation"][frames["e2_separation"].config.isin(CONFIGS)])
+    fig_ownership(frames["e2_separation"])
     fig_means(frames["e2_means"])
     fig_e3(frames["e3_auroc"])
 

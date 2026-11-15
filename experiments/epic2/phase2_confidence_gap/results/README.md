@@ -59,3 +59,17 @@
 | Tail: the probe at the same flag rate gives high scores to fewer wrong answers | Not testable as specified (rate 100%); secondary measure: the probe's top quarter has the fewest errors everywhere |
 
 **What it means for the story.** The model's verbal confidence in an answer depends on whose answer it is, not on whether it is right: in its own turn, separation vanishes (0.50 to 0.55) while the same model, judging the same answer as the user's, partly separates on recall and computation. The information is in the model (P(True) recovers much of it; the probe more), so the failure is in the act of reporting on one's own answer (hypothesis 5, rationalisation, for verbal reports), on top of a coarse readout (E1). Usable result: for these models, do not ask "how sure are you of your answer"; ask P(True) about the answer framed neutrally, with worked examples, or use the probe; never trust a stated 0.9.
+
+## E2b — Beyond Qwen: Claude Haiku 5.5 (2026-11-15)
+
+Verbal self vs user on Claude Haiku 5.5 (API, from the Mac; Phase 1's settings: no temperature, reasoning effort none; max_tokens 1,024 because under "my answer" it often works the problem in the reply). 2,638 replies, none failed, unparsed or truncated. Same swap construction: its own Phase 1 answers, the correct answer and a plausible wrong one in its format (all injected answers grade as built). Key figure: `figures/e2_ownership.png`.
+
+| Separation (150 questions per kind) | "Your answer" | "My answer" |
+| --- | --- | --- |
+| Computation | 0.58 [0.52, 0.63] | 0.99 [0.97, 1.00] |
+| Perception | 0.60 [0.55, 0.64] | 0.86 [0.81, 0.90] |
+| Recall | 0.79 [0.73, 0.85] | 0.85 [0.80, 0.91] |
+
+- **The ownership effect is larger than in Qwen.** A planted wrong product gets 0.9 or more in 78% of cases as "your answer" and in none as the user's; moving the same wrong answer to the user's turn lowers confidence by 0.80 [0.74, 0.85] on computation and 0.77 [0.70, 0.82] on perception.
+- **Mechanism visible in the replies:** under "my answer" Haiku recomputes the answer in its reply ("85 × 98 = 8500 − 170 = 8330. The answer 8830 is incorrect."); under "your answer" it states a confidence without checking. Owning the answer appears to switch off verification. Recall, where there is nothing to recompute, shows the smallest gap.
+- **Prediction** ("Haiku shows the same pattern: separation under 'your answer' within 0.05 of 0.5 on at least two kinds, and higher under 'my answer'"): **partly supported.** Higher under "my answer" on every kind (much higher on computation and perception), but "your answer" is above chance (0.58, 0.60, 0.79), not within 0.05 of 0.5 on any kind: Haiku keeps some separation in its own turn, Qwen almost none.
