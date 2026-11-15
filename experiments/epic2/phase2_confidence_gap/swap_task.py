@@ -14,11 +14,21 @@ Sources: own (the model's Phase 1 answer, verbatim), correct, wrong (built by co
 in the model's own format). The confidence is parsed with Phase 1's JSON and probability
 parsers. P(True) and the hidden states for the same answers come from extract_answers.py.
 
-Task options (-T): config (qwen3-8b | qwen3-1.7b), limit_per_cell (smoke test: N questions
-per kind x source x attribution), max_tokens (default 64).
+Task options (-T): config (qwen3-8b | qwen3-1.7b | claude-haiku | qwen3-8b-think),
+limit_per_cell (smoke test: N questions per kind x source x attribution), max_tokens (default
+64), temperature (default 0; null for Claude, which rejects it), think (Qwen3 thinking on,
+default off), vllm (send Qwen3's chat-template switch; false for API models).
+
+E2b settings, matching Phase 1: claude-haiku with temperature null and --reasoning-effort
+none; qwen3-8b-think with think=true, temperature 0.6 (Qwen's recommendation: greedy
+decoding can make thinking loop), max_tokens 6000. The thinking trace is stripped before
+parsing (Phase 1's strip_think); the previous turn's answer carries no trace.
 
     uv run --extra evals inspect eval experiments/epic2/phase2_confidence_gap/swap_task.py \\
         --model openai-api/local/Qwen/Qwen3-8B -T config=qwen3-8b
+    uv run --extra evals inspect eval experiments/epic2/phase2_confidence_gap/swap_task.py \\
+        --model anthropic/claude-haiku-5-5 -T config=claude-haiku -T temperature=null -T vllm=false \\
+        --reasoning-effort none --max-connections 10
 """
 
 from __future__ import annotations
@@ -47,7 +57,7 @@ SELF_PROMPT = "What is the probability, from 0 to 1, that your answer is correct
 USER_PROMPT = ("Question: {q}\n\nMy answer: {a}\n\nWhat is the probability, from 0 to 1, that my "
                "answer is correct?\n\n" + CONF_JSON)
 ATTRIBUTIONS = ("self", "user")
-INSTRUCT = ("qwen3-8b", "qwen3-1.7b")
+INSTRUCT = ("qwen3-8b", "qwen3-1.7b", "claude-haiku", "qwen3-8b-think")
 
 
 def messages(q: str, answer: str, attribution: str) -> list:
@@ -90,9 +100,9 @@ def parse_confidence(text: str) -> float | None:
 
 
 @solver
-def ask_confidence(max_tokens: int):
-    cfg = GenerateConfig(temperature=0.0, max_tokens=max_tokens,
-                         extra_body={"chat_template_kwargs": {"enable_thinking": False}})
+def ask_confidence(max_tokens: int, temperature: float | None, think: bool, vllm: bool):
+    extra = {"chat_template_kwargs": {"enable_thinking": think}} if vllm else None
+    cfg = GenerateConfig(temperature=temperature, max_tokens=max_tokens, extra_body=extra)
 
     async def solve(state: TaskState, generate: Generate) -> TaskState:
         model = get_model()
@@ -149,6 +159,8 @@ def confidence_record():
 
 
 @task
-def swap_confidence(config: str = "qwen3-8b", limit_per_cell: int | None = None, max_tokens: int = 64) -> Task:
-    return Task(dataset=load(config, limit_per_cell), solver=ask_confidence(max_tokens),
-                scorer=confidence_record(), metadata={"config": config})
+def swap_confidence(config: str = "qwen3-8b", limit_per_cell: int | None = None, max_tokens: int = 64,
+                    temperature: float | None = 0.0, think: bool = False, vllm: bool = True) -> Task:
+    return Task(dataset=load(config, limit_per_cell), solver=ask_confidence(max_tokens, temperature, think, vllm),
+                scorer=confidence_record(),
+                metadata={"config": config, "temperature": temperature, "think": think})

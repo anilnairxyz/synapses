@@ -1,7 +1,8 @@
 """E2 / E3 inputs: the answers to put in the model's mouth (Mac, no model calls).
 
-For each Phase 1B config (qwen3-8b, qwen3-1.7b, qwen3-8b-base) and each answerable test
-question, three given answers:
+For each Phase 1B config (qwen3-8b, qwen3-1.7b, qwen3-8b-base) and, for E2b, claude-haiku
+and qwen3-8b-think (test questions only), and each answerable test question, three given
+answers:
 
   own      the model's own Phase 1 plain answer (P), verbatim; skipped if it abstained or
            is empty. Correct or not per Phase 1's judged label.
@@ -46,6 +47,7 @@ import pandas as pd
 import phase1
 
 CONFIGS = ("qwen3-8b", "qwen3-1.7b", "qwen3-8b-base")
+E2B = ("claude-haiku", "qwen3-8b-think")  # beyond Qwen / thinking: test questions, verbal only
 KINDS = ("recall", "computation", "perception")
 MAX_SENTENCE = 160  # longer own answers (rambling, repeated) are not used as a format
 OUT = phase1.DATA / "swaps.jsonl"
@@ -245,9 +247,10 @@ def build() -> pd.DataFrame:
             gold_by_rel.setdefault(q["meta"]["relation"], []).append(q["gold_answers"][0])
 
     out = []
-    for config in CONFIGS:
+    for config in (*CONFIGS, *E2B):
         base = config.endswith("-base")
-        for split, qs in (("test", test_q), ("train", train_q)):
+        splits = (("test", test_q),) if config in E2B else (("test", test_q), ("train", train_q))
+        for split, qs in splits:
             own = own_answers(config, split).set_index("qid")
             for qid, q in qs.items():
                 if q["category"] not in KINDS:

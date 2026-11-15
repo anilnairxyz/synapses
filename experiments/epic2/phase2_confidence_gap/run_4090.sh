@@ -7,6 +7,7 @@
 #   experiments/epic2/phase2_confidence_gap/run_4090.sh full extract   # only one part:
 #       extract  states, log-probabilities, P(True), probe scores (extract_answers.py, HF)
 #       swap     verbal confidence, self vs user (swap_task.py, vLLM + Inspect)
+#       e2b      (only when named) the same for Qwen3-8B with thinking on
 #
 # Needs: Phase 1's training states on this machine (experiments/epic2/phase1_confidence/states/),
 # data/epic2/confidence/phase2/swaps.jsonl (pulled), LOCAL_BASE_URL / LOCAL_API_KEY in .env.
@@ -60,5 +61,23 @@ for s in log.samples[:12]:
 PY
     fi
   done
+fi
+if [ "$PART" = e2b ]; then  # Qwen3-8B with thinking on (verbal only)
+  mkdir -p $HERE/logs
+  name=qwen3-8b-think
+  echo "=== swap $name $(date +%H:%M)"
+  pkill -f "vllm serve" 2>/dev/null; sleep 5
+  PATH="$(dirname "$VLLM"):$PATH" "$VLLM" serve Qwen/Qwen3-8B --max-model-len 8192 \
+    --gpu-memory-utilization 0.90 > "$HERE/logs/vllm_$name.log" 2>&1 &
+  pid=$!
+  until curl -s localhost:8000/v1/models > /dev/null; do
+    if ! kill -0 $pid 2> /dev/null; then echo "vLLM failed: see $HERE/logs/vllm_$name.log"; exit 1; fi
+    sleep 10
+  done
+  # shellcheck disable=SC2086
+  uv run --extra evals inspect eval $HERE/swap_task.py --model openai-api/local/Qwen/Qwen3-8B \
+    -T config=$name -T think=true -T temperature=0.6 -T max_tokens=6000 $SLIM \
+    --max-connections 64 --tags "$name" --log-dir "$HERE/runs/4090/$MODE/$name" --display plain
+  kill $pid; wait $pid 2> /dev/null
 fi
 echo "=== done $(date +%H:%M)"
