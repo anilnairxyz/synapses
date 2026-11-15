@@ -263,6 +263,8 @@ Sharpened after Lin et al. (trained on sub-task accuracy, the coarse which-level
 
 Predictions (written before the runs): the per-answer LoRA brings own-answer within-level AUROC within 0.05 of the probe on recall and computation, while perception improves but stays more than 0.05 below; the Lin-style LoRA raises pooled AUROC but not within-level AUROC (within 0.05 of untrained); shuffled labels give no gain (within 0.05 of untrained); after per-answer training, "your answer" separation on injected answers rises at least to the untrained "my answer" level; transfer to a held-out kind is weak (less than half the in-kind gain).
 
+Outcome (2026-11-15, Qwen3-1.7B only; details in the [results README](../experiments/epic2/phase2_confidence_gap/results/README.md)): per-answer training lifts own-answer within-level AUROC from 0.57 to 0.97 on computation (above the probe, 0.90) and from 0.58 to 0.76 on perception (level with the probe, 0.80; better than predicted); recall is not testable (already 0.85 untrained, 15 right answers). The Lin-style LoRA calibrates (ECE 0.24 to 0.03 on computation) without discriminating better, and pooled AUROC does not rise; shuffled labels give nothing; injected-answer separation rises to the untrained "my answer" level on recall and perception but not computation (0.65 vs 0.75); transfer is weak (42% computation, 2% perception), as predicted.
+
 ### Reporting (applies to E1 to E5)
 
 From Navaie's talk (2026-11-13; notes in the [sprint brief](epic2_sprint_brief_13-11-2026.md#talk-notes)) and the study step:

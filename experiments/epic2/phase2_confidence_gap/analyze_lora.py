@@ -118,9 +118,11 @@ def figure(res: pd.DataFrame) -> None:
             ax.set_xlim(0.3, 1.0)
             if i == 0:
                 ax.set_title(kind.capitalize())
+            ax.invert_yaxis()
             if j == 0:
                 ax.set_ylabel(pl.MODEL_NAME[cfg])
-                ax.invert_yaxis()
+            else:
+                ax.set_yticklabels([])
     h, lab = axes[0, 0].get_legend_handles_labels()
     fig.legend(h, lab, loc="upper center", bbox_to_anchor=(0.5, 1.03))
     fig.suptitle("Training the 'your answer' report on whether each answer was right", y=1.08, fontweight="bold")

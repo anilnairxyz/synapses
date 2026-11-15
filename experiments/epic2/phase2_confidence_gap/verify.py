@@ -57,6 +57,11 @@ def own_vs_user(config, kind, source):
     return {"config": config, "kind": kind, "readout": "own-vs-user verbal", "source": source}
 
 
+def e5(variant, kind):
+    return {"config": "qwen3-1.7b", "variant": variant, "kind": kind}
+
+
+E5 = "e5_summary.csv"
 KINDS3 = ["recall", "computation", "perception"]
 CP = ["computation", "perception"]
 
@@ -159,6 +164,27 @@ CLAIMS = [
          {"target": "verbal_user", "kind": ["recall", "computation"]}, "probe_vs_conf", 0.38, 0.51),
     every("E4: Qwen3-8B steering shift along the probe at most 0.02", "e4_steer_summary.csv", {"config": "qwen3-8b"},
           "shift_probe", lambda x: abs(x) <= 0.02 + TOL, "|x| <= 0.02"),
+    point("E5: untrained own-answer AUROC, computation", E5, e5("base", "computation"), "within", 0.57),
+    point("E5: per-answer own-answer AUROC, computation", E5, e5("per_answer", "computation"), "within", 0.97),
+    point("  probe on the same answers", E5, e5("base", "computation"), "probe_within", 0.90),
+    point("  per-answer minus probe, lower end", E5, e5("per_answer", "computation"), "minus_probe_lo", 0.00),
+    point("E5: untrained own-answer AUROC, perception", E5, e5("base", "perception"), "within", 0.58),
+    point("E5: per-answer own-answer AUROC, perception", E5, e5("per_answer", "perception"), "within", 0.76),
+    point("  probe on the same answers", E5, e5("base", "perception"), "probe_within", 0.80),
+    point("E5: per-answer greedy reply, computation", E5, e5("per_answer", "computation"), "greedy_within", 0.89),
+    point("E5: Lin-style ECE, computation", E5, e5("lin", "computation"), "ece", 0.03),
+    point("  untrained ECE, computation", E5, e5("base", "computation"), "ece", 0.24),
+    point("E5: Lin-style own-answer AUROC, computation", E5, e5("lin", "computation"), "within", 0.67),
+    point("E5: Lin-style own-answer AUROC, perception", E5, e5("lin", "perception"), "within", 0.60),
+    span("E5: shuffled own-answer AUROC, computation and perception", E5,
+         {"variant": "shuffled", "kind": CP}, "within", 0.57, 0.57),
+    span("E5: per-answer separation of injected answers, 'your answer'", E5,
+         {"variant": "per_answer"}, "sep_self", 0.59, 0.69),
+    point("  untrained 'my answer' separation, computation", E5, e5("base", "computation"), "sep_user", 0.75),
+    point("E5: held-out computation AUROC", E5, e5("loko_computation", "computation"), "within", 0.74),
+    point("E5: held-out perception AUROC", E5, e5("loko_perception", "perception"), "within", 0.58),
+    point("E5: transfer share, computation", "e5_transfer.csv", {"kind": "computation"}, "share_of_gain", 0.42),
+    point("E5: transfer share, perception", "e5_transfer.csv", {"kind": "perception"}, "share_of_gain", 0.02),
 ]
 
 

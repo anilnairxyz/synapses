@@ -1,6 +1,6 @@
 # Report outline (for the team to write from)
 
-Template: `apart_template.docx` (Word / Google Docs), exported to PDF. Target 4 pages excluding references and appendix (hard cap 8). Abstract 150 to 250 words. Every number below is traced to a file in `../results/`; `verify.py` (to come) recomputes them all. Numbers in [brackets] are 95% bootstrap intervals over questions. E5 numbers are pending (run finishing 2026-11-15 evening).
+Template: `apart_template.docx` (Word / Google Docs), exported to PDF. Target 4 pages excluding references and appendix (hard cap 8). Abstract 150 to 250 words. Every number below is traced to a file in `../results/`; `verify.py` (to come) recomputes them all. Numbers in [brackets] are 95% bootstrap intervals over questions. E5 numbers added 2026-11-15.
 
 ## The one claim
 
@@ -19,7 +19,7 @@ Five beats, one or two sentences each:
 1. Problem: LLM confidence is used as evidence of correctness, but stated confidence often misses what the model knows (prior work, and our preexisting Phase 1 and 1B: probes beat stated confidence on every kind).
 2. Method: we give seven models the same question with a correct and a plausible wrong answer, built by construction in the model's own format, placed either in the model's own turn ("your answer") or the user's ("my answer"), across recall, computation and perception; we compare their confidence with P(True), the answer's likelihood and a hidden-state probe on the same answers.
 3. Finding: without reasoning, confidence in an answer in the model's own turn barely separates right from wrong (0.50 to 0.55 for Qwen3-8B/1.7B and Grok 4.1 Fast on computation and perception); Grok rates every such answer 1.00. Reasoning models separate under both framings (0.88 to 1.00). Claude Haiku separates the user's answer (computation 0.99) because it recomputes it; where it writes no working, its separation is at chance.
-4. Mechanism tests: the report's information is in the state, but steering along the correctness direction does not move it; E5 (training on per-answer correctness): one sentence, pending.
+4. Mechanism tests: the report's information is in the state, but steering along the correctness direction does not move it; a small LoRA trained on per-answer correctness connects the own-turn report to it (computation 0.57 to 0.97, at or above the probe), but only for the kinds it was trained on and only for answers the model wrote itself.
 5. Implication: do not ask a non-reasoning model how sure it is of its own answer; ask it to check, or use P(True) or a probe.
 
 ## 1. Introduction (about 0.6 page with the figure; about 350 words)
@@ -37,7 +37,7 @@ Contributions (numbered list, as the template asks):
 1. A controlled swap experiment: correct and plausible wrong answers built in each model's own format, on three kinds of question at fixed difficulty, seven models (two open families, three API providers, two reasoning models). Without reasoning, confidence in an answer in the model's own turn is near chance.
 2. Evidence that the cause is *checking*, not ownership as such: reasoning removes the gap; Claude Haiku's large ownership effect comes with written recomputation and disappears without it; GPT-4o and Grok, which never write working, mostly lower confidence wholesale for the user's answer.
 3. A comparison of readouts on the same answers: the hidden-state probe > P(True) > what the model says; with a familiarity control showing that, on planted answers, much of the probe's advantage is the answer's likelihood.
-4. Two mechanism tests: the correctness direction is readable but steering it does not move the report (E4); training on per-answer correctness (E5, pending).
+4. Two mechanism tests: the correctness direction is readable but steering it does not move the report (E4); a small LoRA on per-answer correctness makes the own-turn report as good as the probe, kind by kind, while calibration-only training does not (E5).
 
 ## 2. Related work (about 0.4 page; about 250 words)
 
@@ -91,7 +91,8 @@ Optional small Table 1: models × settings × number of replies (could go to the
 ### 4.4 Mechanism tests
 
 - E4 readable but not used: "my answer" confidence can be read from the answer's state (Spearman 0.46 to 0.66 on recall and computation) and follows the probe (0.38 to 0.51) (`e4_directions.csv`); steering along the probe's direction moves neither report more than a random direction of the same size (Qwen3-8B: no shift above 0.02 at up to half the state norm; Qwen3-1.7B: inconsistent sign, matched by random pushes, or collapse to one constant reply) (`e4_steer_summary.csv`). One sentence, figure to the appendix.
-- E5 (pending): per-answer training vs Lin-style vs shuffled, within-level AUROC against the probe, separation of injected answers under both framings, transfer to a held-out kind. First look (pooled, not the test): after per-answer training Qwen3-1.7B gives its own right answers 0.77 on average and its wrong ones 0.07. Figure 3 if it is clean: `figures/e5_lora.png`.
+- E5 (Qwen3-1.7B; `e5_summary.csv`, `e5_transfer.csv`; Figure 3 `figures/e5_lora.png`): training the "your answer" report on whether each training answer was right lifts own-answer within-level AUROC from 0.57 to 0.97 [0.93, 1.00] on computation (probe 0.90) and from 0.58 to 0.76 [0.63, 0.88] on perception (probe 0.80). Controls: Lin-style targets calibrate the report (ECE 0.24 to 0.03 on computation) but barely change discrimination (0.67, 0.60); shuffled labels give nothing (0.57). The gain is kind-specific (held out: computation 0.74, 42% of the gain; perception 0.58, none) and does not teach checking: separation of injected answers in its own turn only 0.59 to 0.69, far below the reasoning models. Read: the default report fails not for lack of information or capacity but because the model is not trained to use what it has; training gives a reading of its own answers, not a check.
+
 
 ## 5. Discussion and limitations (about 0.5 page; about 300 words)
 
