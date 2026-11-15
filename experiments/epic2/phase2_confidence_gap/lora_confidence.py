@@ -33,6 +33,8 @@ correct, attribution, ev, cand_mass, greedy, reply. Adapters go to lora_runs/ (g
 Usage (repo root, WSL):
   uv run --extra evals --extra interp python experiments/epic2/phase2_confidence_gap/lora_confidence.py qwen3-1.7b --limit 64
   uv run --extra evals --extra interp python experiments/epic2/phase2_confidence_gap/lora_confidence.py qwen3-1.7b
+  ... qwen3-1.7b --reuse   after an interrupted run: variants whose adapter is already in lora_runs/
+                           are loaded and scored, not retrained
 """
 
 from __future__ import annotations
@@ -266,6 +268,7 @@ def main() -> None:
     ap.add_argument("--variants", nargs="+", default=list(VARIANTS), choices=VARIANTS)
     ap.add_argument("--limit", type=int, help="smoke test: small training and test sets, 30 steps; nothing saved")
     ap.add_argument("--batch-size", type=int, default=8)
+    ap.add_argument("--reuse", action="store_true", help="load adapters already saved in lora_runs/ instead of retraining")
     args = ap.parse_args()
 
     import torch
@@ -300,10 +303,18 @@ def main() -> None:
         texts = [prompt_text(tok, qs[r.qid], r.text, "self") for r in rows.itertuples()]
         items = encode_train(tok, texts, reps)
         print(f"  --- {variant}: {len(items)} training examples, e.g. target {reps[0]!r}")
-        model = get_peft_model(fresh(), LoraConfig(
-            r=RANK, lora_alpha=2 * RANK, lora_dropout=0.05, task_type="CAUSAL_LM",
-            target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]))
-        train(model, tok, items, device, 30 if args.limit else None)
+        saved = RUNS / args.config / variant
+        reused = args.reuse and not args.limit and (saved / "adapter_config.json").exists()
+        if reused:
+            from peft import PeftModel
+            print(f"    reusing the adapter in {saved}")
+            model = PeftModel.from_pretrained(fresh(), saved)
+            model.eval()
+        else:
+            model = get_peft_model(fresh(), LoraConfig(
+                r=RANK, lora_alpha=2 * RANK, lora_dropout=0.05, task_type="CAUSAL_LM",
+                target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]))
+            train(model, tok, items, device, 30 if args.limit else None)
         model.config.use_cache = True
         res = evaluate(model, tok, test, qs, variant, device, args.batch_size)
         results.append(res)
@@ -311,8 +322,8 @@ def main() -> None:
         print(f"    {variant}: own answers, mean EV right {own[own.correct == 1].ev.mean():.3f} vs wrong "
               f"{own[own.correct == 0].ev.mean():.3f}; candidate mass median {res.cand_mass.median():.3f}; "
               f"e.g. {res.reply.iloc[0]!r}")
-        if not args.limit:
-            model.save_pretrained(RUNS / args.config / variant)
+        if not args.limit and not reused:
+            model.save_pretrained(saved)
         del model
         torch.cuda.empty_cache()
 
