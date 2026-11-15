@@ -90,3 +90,23 @@ Verbal self vs user on Qwen3-8B with thinking on (4090, vLLM; Phase 1's settings
 - **Prediction** ("thinking reduces but does not remove it: separation under 'your answer' above 0.5 but below 'my answer'"): **not supported.** Above 0.5 on every kind, but not below "my answer": equal on computation, within the intervals on perception, and slightly above on recall. Thinking removes the gap.
 
 **Updated story.** Without reasoning first, a model's confidence in an answer placed in its own turn barely depends on whether the answer is right (Qwen3-8B and 1.7B: 0.50 to 0.55; Claude Haiku: 0.58 to 0.79), while the same model, judging the same answer as the user's, separates far better (Haiku computation 0.99). The difference is checking: the user's answer is checked, the model's own is not, unless the model reasons before stating its confidence, in which case its own answer is checked too.
+
+## E4 Part A — Which report can be read from the answer's state (2026-11-15)
+
+`directions.py` on the PC (CPU), on the E2 states of every given answer (own, correct, wrong), at the layer the Phase 1B probe chose per kind (`ans_last`). The refitted probes reproduce `extract_answers.py`'s scores exactly (r = 1.0000 for all six). Table: `e4_directions.csv`; directions for steering: `e4_probe_dirs.npz` (pushed in commit c22e8c3, whose message says "Part B" but which holds these Part A outputs). Within-stratum Spearman, 95% intervals over questions.
+
+| | "My answer": readable | "My answer" vs probe | "Your answer": readable | "Your answer" vs probe |
+| --- | --- | --- | --- | --- |
+| Qwen3-8B recall | 0.46 [0.38, 0.54] | 0.49 [0.40, 0.57] | 0.51 [0.41, 0.58] | 0.50 [0.40, 0.57] |
+| Qwen3-8B computation | 0.66 [0.58, 0.73] | 0.39 [0.28, 0.48] | pinned (4 values, all ~1.0) | |
+| Qwen3-8B perception | 0.02 [−0.07, 0.13] | 0.15 [0.05, 0.23] | pinned | |
+| Qwen3-1.7B recall | 0.59 [0.49, 0.66] | 0.51 [0.40, 0.58] | 0.48 [0.36, 0.55] | 0.50 [0.41, 0.58] |
+| Qwen3-1.7B computation | 0.48 [0.37, 0.57] | 0.38 [0.28, 0.47] | 0.47 [0.39, 0.55] | 0.15 [0.05, 0.26] |
+| Qwen3-1.7B perception | 0.48 [0.37, 0.55] | 0.21 [0.08, 0.29] | 0.21 [0.10, 0.30] | 0.14 [0.02, 0.23] |
+
+"Readable": the out-of-fold ridge readout from the state against the stated confidence. "Vs probe": the correctness probe's score against the stated confidence. A (stated with the answer) barely varies within levels for either model (nothing to read, except Qwen3-1.7B recall 0.18 and computation 0.29).
+
+- **"My answer" confidence is in the answer's state** on recall and computation (0.46 to 0.66), and follows the correctness probe there (0.38 to 0.51); on perception much less.
+- **On computation, Qwen3-1.7B's "your answer" confidence is as readable from the state as its "my answer" confidence (0.47 vs 0.48) but follows the correctness probe far less (0.15 vs 0.38):** the report on its own answer reads something in the state, but not mainly the correctness signal. On recall both reports follow the probe equally (about 0.50).
+- **Raw-space cosines are uninformative.** Qwen3-8B computation: −0.94 against the correctness probe, but −0.96 against a probe trained on shuffled labels; fitted directions share the states' dominant axes. Elsewhere 0.06 to 0.27 against −0.16 to 0.04 for the shuffled baseline: small.
+- **Prediction (A)** ("'my answer' readable, Spearman ≥ 0.3 on recall and computation; cosine 0.2 to 0.5"): **readability supported** (0.46 to 0.66); **the cosine part is not testable in the raw state space** (the shuffled baseline is as large where the cosine is large).
