@@ -76,6 +76,6 @@ The user plans to attend most talks, so the work plan keeps those slots free of 
 ## To do before writing
 
 - [x] Rubric recorded above (2026-11-13).
-- [ ] Download the template from the Guidelines tab.
+- [x] Template downloaded (2026-11-15): `experiments/epic2/phase2_confidence_gap/report/apart_template.docx`. Sections: Introduction (with a numbered list of contributions), Related Work, Methods, Results, Discussion and Limitations (with Limitations and Future Work), Conclusion, Code and Data, Author Contributions (optional), References, Appendix (optional), LLM Usage Statement. **Recommended length 4 pages** excluding references and appendix (intro and related work 1 page, methods and results 2.5, discussion 0.5); 8 is the hard cap. The template says: "We strongly encourage that the final version of the submission is primarily written by your team", so the report prose is written by the user from an outline, and Claude verifies numbers, reviews, and makes figures and the appendix.
 - [ ] Check the Resources tab's reading list for our track against the Phase 2 study list.
 - [ ] Confirm the track name for our project.
