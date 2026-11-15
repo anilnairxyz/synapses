@@ -23,6 +23,7 @@ Inputs read from Phase 1 (unchanged; `../phase1_confidence/results/rows.parquet`
 - `steer.py`: E4 Part B on the 4090 (HF): the E2 confidence conversations with the correctness probe's direction (or a random one) added at the probe's layer.
 - `analyze_steer.py`: E4 Part B analysis (Mac): shift per condition, probe vs random, separation and output collapse under steering.
 - `lora_confidence.py`: E5 on the 4090 (HF + peft): LoRAs training the "your answer" report on per-answer correctness, with Lin-style (stratum accuracy) and shuffled controls and leave-one-kind-out transfer; evaluated on the E2 test answers. Adapters in `lora_runs/` (gitignored).
+- `analyze_lora.py`: E5 analysis (Mac): within-level and pooled AUROC of the trained report on own answers against the probe and the untrained model, separation on injected answers, transfer to a held-out kind.
 - `office/` and `make_office_bundle.py`: E2b on Azure AI Foundry (GPT-4o, GPT-5 nano, Grok 4.1 Fast): a self-contained bundle for the office; see `office/README.md`.
 - `run_4090.sh`: `smoke` or `full`, optionally only `extract` or `swap`.
 - `results/`: tables, figures, and the findings so far ([`results/README.md`](results/README.md)).
