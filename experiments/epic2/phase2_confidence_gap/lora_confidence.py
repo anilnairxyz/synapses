@@ -14,7 +14,8 @@ test questions. Variants (all on the same class-balanced inputs; only the target
   loko_<kind>  per-answer, trained without <kind>; tested on all (transfer to the held-out kind)
 
 LoRA: rank 16, alpha 32, dropout 0.05, on q/k/v/o and the MLP projections; loss on the reply
-tokens only; 2 epochs, learning rate 1e-4, batch 16, bf16. Inputs: the training own answers
+tokens only (the output layer is applied at those positions alone); 2 epochs, learning rate
+1e-4, batches of up to 16 answers grouped by length within 8,192 padded tokens, bf16. Inputs: the training own answers
 from swaps.jsonl; the minority class (right answers) is oversampled to match the majority.
 
 Readout, for the untrained model ("base") and every LoRA, on every test answer of E2 (own,
@@ -38,7 +39,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import time
 
 import numpy as np
@@ -54,6 +54,7 @@ CANDIDATES = ("0", "1", *(f"{i / 10:.1f}" for i in range(11)), "0.95", "0.99")
 RUNS = phase1.HERE / "lora_runs"
 SEED = 0
 EPOCHS, LR, BATCH, RANK = 2, 1e-4, 16, 16
+TOKEN_BUDGET = 8192  # tokens per batch (padded): a few own answers run to ~1,000 tokens
 
 
 def reply(v: str) -> str:
@@ -126,20 +127,44 @@ def encode_train(tok, texts: list[str], replies: list[str]) -> list[dict]:
     return out
 
 
+def length_batches(lengths: list[int], max_count: int, budget: int) -> list[list[int]]:
+    """Indices grouped by length, each batch at most ``max_count`` rows and ``budget`` padded
+    tokens (a single longer row still gets its own batch)."""
+    order = sorted(range(len(lengths)), key=lambda i: lengths[i])
+    batches, cur = [], []
+    for i in order:
+        if cur and (len(cur) + 1 > max_count or (len(cur) + 1) * lengths[i] > budget):
+            batches.append(cur)
+            cur = []
+        cur.append(i)
+    if cur:
+        batches.append(cur)
+    return batches
+
+
+def reply_logits(model, ids, mask, positions):
+    """Logits only at the given (row, position) pairs: the decoder's hidden states, then the
+    output layer on those positions alone (full-vocabulary logits everywhere do not fit)."""
+    inner = model.get_base_model() if hasattr(model, "get_base_model") else model
+    hidden = inner.model(input_ids=ids, attention_mask=mask).last_hidden_state
+    return inner.lm_head(hidden[positions[0], positions[1]])
+
+
 def train(model, tok, items: list[dict], device: str, max_steps: int | None) -> None:
     import torch
 
     opt = torch.optim.AdamW([p for p in model.parameters() if p.requires_grad], lr=LR)
-    n_steps = max_steps or EPOCHS * math.ceil(len(items) / BATCH)
+    batches = length_batches([len(x["ids"]) for x in items], BATCH, TOKEN_BUDGET)
+    n_steps = max_steps or EPOCHS * len(batches)
     sched = torch.optim.lr_scheduler.LambdaLR(opt, lambda s: min(1.0, (s + 1) / 20) * max(0.0, 1 - s / n_steps))
     rng = np.random.default_rng(SEED)
     model.train()
     step, t0 = 0, time.time()
     while step < n_steps:
-        for b in np.array_split(rng.permutation(len(items)), max(1, math.ceil(len(items) / BATCH))):
+        for bi in rng.permutation(len(batches)):
             if step >= n_steps:
                 break
-            batch = [items[i] for i in b]
+            batch = [items[i] for i in batches[bi]]
             width = max(len(x["ids"]) for x in batch)
             ids = torch.full((len(batch), width), tok.pad_token_id, dtype=torch.long)
             lab = torch.full((len(batch), width), -100, dtype=torch.long)
@@ -148,7 +173,11 @@ def train(model, tok, items: list[dict], device: str, max_steps: int | None) -> 
                 ids[r, :len(x["ids"])] = torch.tensor(x["ids"])
                 lab[r, :len(x["labels"])] = torch.tensor(x["labels"])
                 mask[r, :len(x["ids"])] = 1
-            loss = model(input_ids=ids.to(device), attention_mask=mask.to(device), labels=lab.to(device)).loss
+            # next-token loss on the reply tokens only: position t predicts token t + 1
+            tgt = lab[:, 1:]
+            rows, cols = torch.nonzero(tgt != -100, as_tuple=True)
+            logits = reply_logits(model, ids.to(device), mask.to(device), (rows.to(device), cols.to(device)))
+            loss = torch.nn.functional.cross_entropy(logits.float(), tgt[rows, cols].to(device))
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             opt.step()
@@ -169,34 +198,34 @@ def candidate_ev(model, tok, texts: list[str], device: str, batch_size: int) -> 
 
     cand_ids = [tok(reply(c), add_special_tokens=False)["input_ids"] for c in CANDIDATES]
     vals = np.array([float(c) for c in CANDIDATES])
-    out = np.zeros((len(texts), 2))
-    for b in range(0, len(texts), max(1, batch_size // len(CANDIDATES))):
-        chunk = list(range(b, min(len(texts), b + max(1, batch_size // len(CANDIDATES)))))
-        seqs, spans = [], []
-        for i in chunk:
-            p = tok(texts[i], add_special_tokens=False)["input_ids"]
-            for c in cand_ids:
-                seqs.append(p + c)
-                spans.append((len(p), len(c)))
-        width = max(len(s) for s in seqs)
-        ids = torch.full((len(seqs), width), tok.pad_token_id, dtype=torch.long)
-        mask = torch.zeros((len(seqs), width), dtype=torch.long)
-        for r, s in enumerate(seqs):
-            ids[r, :len(s)] = torch.tensor(s)
-            mask[r, :len(s)] = 1
+    prompts = [tok(t, add_special_tokens=False)["input_ids"] for t in texts]
+    seqs = [(i, j, p + c, len(p), len(c)) for i, p in enumerate(prompts) for j, c in enumerate(cand_ids)]
+    lp = np.zeros((len(texts), len(CANDIDATES)))
+    for b in length_batches([len(s[2]) for s in seqs], batch_size * len(CANDIDATES), TOKEN_BUDGET * 2):
+        chunk = [seqs[k] for k in b]
+        width = max(len(s[2]) for s in chunk)
+        ids = torch.full((len(chunk), width), tok.pad_token_id, dtype=torch.long)
+        mask = torch.zeros((len(chunk), width), dtype=torch.long)
+        rows, cols, tgt = [], [], []
+        for r, (_, _, s_, p, n) in enumerate(chunk):
+            ids[r, :len(s_)] = torch.tensor(s_)
+            mask[r, :len(s_)] = 1
+            rows += [r] * n
+            cols += list(range(p - 1, p + n - 1))
+            tgt += s_[p:p + n]
         with torch.no_grad():
-            logits = model(input_ids=ids.to(device), attention_mask=mask.to(device)).logits
-            lp = np.zeros(len(seqs))
-            for r, (p, n) in enumerate(spans):
-                logp = torch.log_softmax(logits[r, p - 1:p + n - 1].float(), -1)
-                tgt = ids[r, p:p + n].to(logp.device)
-                lp[r] = float(logp.gather(1, tgt[:, None]).sum())
-        del logits
-        lp = lp.reshape(len(chunk), len(CANDIDATES))
-        for j, i in enumerate(chunk):
-            m = lp[j].max()
-            w = np.exp(lp[j] - m)
-            out[i] = (float((w * vals).sum() / w.sum()), float(np.exp(lp[j]).sum()))
+            logits = reply_logits(model, ids.to(device), mask.to(device),
+                                  (torch.tensor(rows, device=device), torch.tensor(cols, device=device)))
+            tok_lp = torch.log_softmax(logits.float(), -1).gather(1, torch.tensor(tgt, device=device)[:, None])
+        tok_lp = tok_lp.squeeze(1).cpu().numpy()
+        pos = 0
+        for (i, j, _, _, n) in chunk:
+            lp[i, j] = tok_lp[pos:pos + n].sum()
+            pos += n
+    out = np.zeros((len(texts), 2))
+    for i in range(len(texts)):
+        w = np.exp(lp[i] - lp[i].max())
+        out[i] = (float((w * vals).sum() / w.sum()), float(np.exp(lp[i]).sum()))
     return out
 
 
@@ -204,12 +233,14 @@ def greedy(model, tok, texts: list[str], device: str, batch_size: int) -> list[s
     import torch
 
     tok.padding_side = "left"
-    res = []
-    for b in range(0, len(texts), batch_size):
-        enc = tok(texts[b:b + batch_size], return_tensors="pt", padding=True, add_special_tokens=False).to(device)
+    res = [""] * len(texts)
+    lengths = [len(tok(t, add_special_tokens=False)["input_ids"]) for t in texts]
+    for b in length_batches(lengths, batch_size, TOKEN_BUDGET):
+        enc = tok([texts[i] for i in b], return_tensors="pt", padding=True, add_special_tokens=False).to(device)
         with torch.no_grad():
             gen = model.generate(**enc, max_new_tokens=12, do_sample=False, pad_token_id=tok.pad_token_id)
-        res += tok.batch_decode(gen[:, enc["input_ids"].shape[1]:], skip_special_tokens=True)
+        for i, x in zip(b, tok.batch_decode(gen[:, enc["input_ids"].shape[1]:], skip_special_tokens=True), strict=True):
+            res[i] = x
     tok.padding_side = "right"
     return res
 
@@ -218,7 +249,7 @@ def evaluate(model, tok, t: pd.DataFrame, qs: dict, variant: str, device: str, b
     rows = []
     for att in ("self", "user"):
         texts = [prompt_text(tok, qs[r.qid], r.text, att) for r in t.itertuples()]
-        ev = candidate_ev(model, tok, texts, device, batch_size * 4)
+        ev = candidate_ev(model, tok, texts, device, batch_size)
         gr = greedy(model, tok, texts, device, batch_size * 2)
         rows.append(t[["qid", "category", "level", "family", "source", "correct"]].assign(
             variant=variant, attribution=att, ev=ev[:, 0], cand_mass=ev[:, 1],

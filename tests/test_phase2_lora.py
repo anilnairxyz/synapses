@@ -43,3 +43,12 @@ def test_candidates_parse():
 def test_test_set_has_all_sources():
     t = lc.test_set("qwen3-1.7b", None)
     assert set(t.source) == {"own", "correct", "wrong"} and set(t.split) == {"test"}
+
+
+def test_length_batches_respect_budget():
+    lengths = [10, 500, 12, 11, 1200, 9, 13, 480]
+    batches = lc.length_batches(lengths, max_count=3, budget=1000)
+    assert sorted(i for b in batches for i in b) == list(range(len(lengths)))
+    for b in batches:
+        assert len(b) <= 3
+        assert len(b) == 1 or max(lengths[i] for i in b) * len(b) <= 1000
