@@ -29,6 +29,7 @@ interp = [
     "transformers>=4.44",
     "datasets>=2.20",
     "transformer-lens>=2.0",
+    "peft>=0.13",  # Epic 2 Phase 2 E5 (LoRA)
 ]
 # Setup smoke test (Stable Diffusion) — mirrors ../PythonSnippets/generative_ai/use_diffuser.py
 diffusers = [
