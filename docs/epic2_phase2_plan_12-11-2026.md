@@ -217,7 +217,9 @@ E2's central result (verbal confidence in an answer placed in the model's own tu
 - **Qwen3-8B with thinking on** (4090): Phase 1 answers exist. Tsui (Self-Correction Bench) found that reasoning-trained models do not show the self-correction blind spot; does thinking before the confidence remove the "certain of whatever it said" effect? Verbal self vs user; P(True) and the likelihood control as for the other Qwen configs if the thinking trace can be handled (otherwise verbal only).
 - **At the office (Foundry; confirmed 2026-11-15):** GPT-5 nano, Grok 4.1 Fast, GPT-4o, verbal self vs user, from a self-contained bundle (`office/`), with Phase 1's per-model settings (Grok non-reasoning and GPT-4o with max_tokens raised for the working; GPT-5 nano at its default temperature, reasoning effort low).
 
-Prediction (written before the runs): Claude Haiku shows the same pattern (separation under "your answer" within 0.05 of 0.5 on at least two kinds, and higher under "my answer"); thinking reduces but does not remove it (separation under "your answer" above 0.5 but below "my answer").
+Prediction (written before the runs; none written separately for the Foundry models): Claude Haiku shows the same pattern (separation under "your answer" within 0.05 of 0.5 on at least two kinds, and higher under "my answer"); thinking reduces but does not remove it (separation under "your answer" above 0.5 but below "my answer").
+
+Outcome (2026-11-15, details in the [results README](../experiments/epic2/phase2_confidence_gap/results/README.md)): the non-reasoning models (Qwen3-8B and 1.7B, Grok 4.1 Fast, GPT-4o on computation) barely separate in their own turn and somewhat better under "my answer"; Claude Haiku separates far better under "my answer" because it recomputes the user's answer in its reply; the reasoning models (Qwen3-8B thinking, GPT-5 nano) separate under both framings. The Haiku prediction is partly supported; the thinking prediction is not (reasoning removes the gap).
 
 ### E3 — Elicitation
 

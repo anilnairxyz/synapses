@@ -89,7 +89,33 @@ Verbal self vs user on Qwen3-8B with thinking on (4090, vLLM; Phase 1's settings
 - **Caveat.** On computation and perception the thinking model recomputes the answer, so its confidence becomes verification, not introspection about its earlier state. Recall cannot be recomputed; there thinking helps less (0.72 vs 0.55 without).
 - **Prediction** ("thinking reduces but does not remove it: separation under 'your answer' above 0.5 but below 'my answer'"): **not supported.** Above 0.5 on every kind, but not below "my answer": equal on computation, within the intervals on perception, and slightly above on recall. Thinking removes the gap.
 
-**Updated story.** Without reasoning first, a model's confidence in an answer placed in its own turn barely depends on whether the answer is right (Qwen3-8B and 1.7B: 0.50 to 0.55; Claude Haiku: 0.58 to 0.79), while the same model, judging the same answer as the user's, separates far better (Haiku computation 0.99). The difference is checking: the user's answer is checked, the model's own is not, unless the model reasons before stating its confidence, in which case its own answer is checked too.
+## E2b — Foundry: GPT-4o, Grok 4.1 Fast, GPT-5 nano (2026-11-15)
+
+Verbal self vs user on three Azure AI Foundry models (run at the office from the `office/` bundle, logs in `runs/foundry/full/`; Phase 1's settings: GPT-4o and Grok 4.1 Fast non-reasoning with max_tokens 512, GPT-5 nano a reasoning model at its default temperature with reasoning effort low and max_tokens 4,000). 2,650 / 2,670 / 2,598 replies, all complete and all parsed. Same swap construction (own Phase 1 answers, correct, plausible wrong in the model's format).
+
+| Separation (150 questions per kind) | GPT-4o self | GPT-4o user | Grok self | Grok user | GPT-5 nano self | GPT-5 nano user |
+| --- | --- | --- | --- | --- | --- | --- |
+| Computation | 0.53 [0.51, 0.56] | 0.63 [0.59, 0.67] | 0.50 [0.50, 0.50] | 0.57 [0.53, 0.60] | 0.98 [0.96, 1.00] | 1.00 [0.99, 1.00] |
+| Perception | 0.62 [0.59, 0.66] | 0.66 [0.61, 0.71] | 0.50 [0.50, 0.50] | 0.61 [0.58, 0.65] | 0.95 [0.92, 0.98] | 0.99 [0.98, 1.00] |
+| Recall | 0.93 [0.90, 0.96] | 0.96 [0.93, 0.98] | 0.63 [0.59, 0.68] | 0.81 [0.76, 0.85] | 0.86 [0.81, 0.91] | 0.88 [0.83, 0.93] |
+
+- **The two non-reasoning models do not check an answer in their own turn.** Grok gives 1.00 to every computation and perception answer as "your answer", planted wrong ones included (separation exactly 0.50). GPT-4o gives planted wrong products 0.97 on average, 97% of them 0.9 or more.
+- **"My answer" mostly lowers confidence across the board rather than checking.** Moving a planted wrong product to the user's turn lowers its confidence by 0.77 [0.70, 0.83] for GPT-4o and 0.63 [0.55, 0.71] for Grok, but correct products drop too (by 0.52 for both), so separation improves only modestly (computation 0.53 to 0.63, 0.50 to 0.57). Neither writes any working in its reply under either framing (replies are the bare JSON).
+- **The reasoning model checks both.** GPT-5 nano, which reasons before replying, separates at 0.95 to 1.00 on computation and perception under both framings, with ownership differences of 0.01 to 0.09: the same pattern as Qwen3-8B with thinking on.
+- **Recall is different.** GPT-4o separates well on recall in its own turn (0.93): a fact can be checked by recalling it, with no working needed. Grok, which is certain of everything it said, does not (0.63).
+- **Prediction.** No separate prediction was written for these three; against the Haiku prediction ("your answer" within 0.05 of 0.5 on at least two kinds, higher under "my answer"): **supported** for Grok (0.50 / 0.50 / 0.63, higher under "my answer" on every kind) and **mostly** for GPT-4o (within 0.05 on computation only; higher under "my answer" on every kind, significantly on computation). Against the thinking prediction for the reasoning model: as with Qwen thinking, **not supported**: reasoning removes the gap rather than reducing it.
+
+## What the replies show: checking, not ownership as such (2026-11-15)
+
+From `analyze_replies.py` (`e2_working.csv`, `e2_working_haiku.csv`). Share of replies with written working (more than 40 characters after removing any thinking trace), and Claude Haiku's separation split by whether it wrote working for both answers of a pair:
+
+- Only Claude Haiku writes working, and almost only under "my answer": computation 97% of replies under "my answer" vs 18% under "your answer"; perception 51% vs 0%; recall 11% vs 0%. Every other model (Qwen with and without thinking, GPT-4o, Grok, GPT-5 nano) replies with the bare JSON under both framings.
+- When Haiku writes working for both answers, separation is 1.00 (computation, 144 pairs; perception, 67 pairs). When it writes none for either, it is 0.45 on computation "your answer" (107 pairs) and 0.69 on perception "my answer" (48 pairs) against 0.59 for "your answer".
+- So Haiku's large ownership effect is mostly an effect on *whether it checks*: framing the answer as the user's makes it recompute; the recomputation, not the framing, produces the separation. A residual framing effect without working remains on perception (0.69 vs 0.59).
+
+**Updated story (with the Foundry models and the replies).** Across seven models, confidence in an answer separates right from wrong when the model checks it, and the model checks it when it reasons first (Qwen3-8B thinking, GPT-5 nano: 0.88 to 1.00 under both framings on computation and perception) or, for Claude Haiku, when the answer is framed as the user's (it recomputes in the reply). Without reasoning, a model does not check an answer in its own turn (Qwen3-8B and 1.7B, Grok, GPT-4o on computation: 0.50 to 0.55). Framing the answer as the user's then lowers confidence wholesale (by about 0.5 for GPT-4o and Grok on computation) and separates somewhat better, but without checking it stays far from what checking gives. Recall is the exception: a fact can be checked by recall alone, and the stronger models separate there in their own turn (GPT-4o 0.93).
+
+**Earlier story (Qwen and Haiku only).** **Updated story.** Without reasoning first, a model's confidence in an answer placed in its own turn barely depends on whether the answer is right (Qwen3-8B and 1.7B: 0.50 to 0.55; Claude Haiku: 0.58 to 0.79), while the same model, judging the same answer as the user's, separates far better (Haiku computation 0.99). The difference is checking: the user's answer is checked, the model's own is not, unless the model reasons before stating its confidence, in which case its own answer is checked too.
 
 ## E4 Part A — Which report can be read from the answer's state (2026-11-15)
 
