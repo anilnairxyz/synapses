@@ -417,7 +417,7 @@ def fig_ownership(sep: pd.DataFrame) -> None:
             ax.invert_yaxis()
     h, lab = axes[0].get_legend_handles_labels()
     fig.legend(h, lab, loc="upper center", ncol=2, bbox_to_anchor=(0.5, 1.06))
-    fig.suptitle("Asked about an answer in its own turn, a model tells right from wrong far less well",
+    fig.suptitle("Unless it reasons first, a model barely checks an answer placed in its own turn",
                  y=1.13, fontweight="bold")
     fig.supxlabel("Share of questions where the correct answer gets more confidence (0.5 = none)",
                   fontsize=10, color=pl.INK2)

@@ -73,3 +73,20 @@ Verbal self vs user on Claude Haiku 5.5 (API, from the Mac; Phase 1's settings: 
 - **The ownership effect is larger than in Qwen.** A planted wrong product gets 0.9 or more in 78% of cases as "your answer" and in none as the user's; moving the same wrong answer to the user's turn lowers confidence by 0.80 [0.74, 0.85] on computation and 0.77 [0.70, 0.82] on perception.
 - **Mechanism visible in the replies:** under "my answer" Haiku recomputes the answer in its reply ("85 × 98 = 8500 − 170 = 8330. The answer 8830 is incorrect."); under "your answer" it states a confidence without checking. Owning the answer appears to switch off verification. Recall, where there is nothing to recompute, shows the smallest gap.
 - **Prediction** ("Haiku shows the same pattern: separation under 'your answer' within 0.05 of 0.5 on at least two kinds, and higher under 'my answer'"): **partly supported.** Higher under "my answer" on every kind (much higher on computation and perception), but "your answer" is above chance (0.58, 0.60, 0.79), not within 0.05 of 0.5 on any kind: Haiku keeps some separation in its own turn, Qwen almost none.
+
+## E2b — Qwen3-8B with thinking on (2026-11-15)
+
+Verbal self vs user on Qwen3-8B with thinking on (4090, vLLM; Phase 1's settings: temperature 0.6, max_tokens 6,000; the thinking trace stripped before parsing). 2,670 replies, no errors; 3 cut off at the token limit and so unparsed, left out (0.1%).
+
+| Separation (150 questions per kind) | "Your answer", no thinking | "Your answer", thinking | "My answer", thinking |
+| --- | --- | --- | --- |
+| Computation | 0.51 [0.50, 0.52] | 1.00 [1.00, 1.00] | 1.00 [1.00, 1.00] |
+| Perception | 0.50 [0.50, 0.51] | 0.88 [0.84, 0.91] | 0.93 [0.91, 0.96] |
+| Recall | 0.55 [0.51, 0.60] | 0.72 [0.66, 0.78] | 0.66 [0.59, 0.73] |
+
+- **Thinking removes the effect.** With thinking on, Qwen3-8B gives planted wrong products 0.00 and correct ones 1.00 even as "your answer"; planted wrong perception answers get 0.9 or more in 25% of cases (100% without thinking). The ownership difference on wrong answers is 0.00 on computation and 0.15 on recall and perception, against 0.21 to 0.37 without thinking.
+- **What it means.** The gap is not about ownership as such but about checking: without reasoning, a model rates an answer in its own turn without checking it; Claude Haiku checks the user's answer in its visible reply, and thinking makes the model check its own as well. This matches Tsui's finding that reasoning-trained models lack the self-correction blind spot.
+- **Caveat.** On computation and perception the thinking model recomputes the answer, so its confidence becomes verification, not introspection about its earlier state. Recall cannot be recomputed; there thinking helps less (0.72 vs 0.55 without).
+- **Prediction** ("thinking reduces but does not remove it: separation under 'your answer' above 0.5 but below 'my answer'"): **not supported.** Above 0.5 on every kind, but not below "my answer": equal on computation, within the intervals on perception, and slightly above on recall. Thinking removes the gap.
+
+**Updated story.** Without reasoning first, a model's confidence in an answer placed in its own turn barely depends on whether the answer is right (Qwen3-8B and 1.7B: 0.50 to 0.55; Claude Haiku: 0.58 to 0.79), while the same model, judging the same answer as the user's, separates far better (Haiku computation 0.99). The difference is checking: the user's answer is checked, the model's own is not, unless the model reasons before stating its confidence, in which case its own answer is checked too.
