@@ -222,6 +222,8 @@ Readouts of confidence in the model's own P answer, compared within levels again
 
 Within-level AUROC leads; ECE and Brier are reported alongside for comparison with Sanz-Guerrero et al.
 
+**P(True) exclusion rule (fixed 2026-11-15, after the full run's completeness check and before any analysis):** an answer is left out of a P(True) variant when that variant puts less than 0.5 of the next-token probability on the two letters together (the model was not answering in the format). This affects only the neutral zero-shot variant: 16 of 7,075 answers for Qwen3-8B (0.2%) and 236 of 7,084 for Qwen3-1.7B (3.3%); none for the base model or the other variants. Counts are reported with the results.
+
 If one readout closes most of the gap to the probe, that is the usable result: which readout to trust, by kind of question. If none does, the information is there but asking cannot reach it.
 
 ### E4 — Directions and steering (hypotheses 1 and 6)
@@ -259,7 +261,7 @@ The repo is public and goes into the submission, so sprint work must be clearly 
 2. **Set up the boundary.** Done 2026-11-14: tag `sprint-start` pushed; `phase2_confidence_gap/` with `README.md` and `phase1.py`; `tests/test_phase2_boundary.py` (6 pass).
 3. **E1** (Mac). Done 2026-11-14: `analyze_stereotype.py`; findings in [`results/README.md`](../experiments/epic2/phase2_confidence_gap/results/README.md). The prior-work search is done too (study notes above).
 4. **Build E2 and E3** (Mac). Done 2026-11-14 (see the Phase 2 README); P(True) uses 8 worked examples and, for the instruct models, the assistant's reply started with "(" so the next token is the letter. `build_swaps.py` (wrong answers by construction), `swap_task.py` (reusing Phase 1's prompts and grading), `extract_answers.py`. Unit tests on the wrong-answer builders (always wrong, always different from the correct and the own answer, plausible length).
-5. **4090 smoke runs** (`--limit`), then the full runs: E2 for three configs (base: P(True) only), E3 P(True) on the test and training sets, extraction for E2's answers.
+5. **4090 smoke runs** (`--limit`), then the full runs (done 2026-11-14/15; outputs complete, probe check reproduces Phase 1B, every swap reply parsed): E2 for three configs (base: P(True) only), E3 P(True) on the test and training sets, extraction for E2's answers.
 6. **Analysis and figures for E1 to E3.** Paired bootstrap CIs; the tail measures; `verify.py`, which recomputes every number in the report from the committed tables.
 7. **E4** (directions on existing states, then steering on the 4090) and **E5** (LoRA on the 4090), each with its own smoke run, then into the analysis and `verify.py`.
 8. **Report.** On the official template, 4 to 8 pages (hard cap) plus references and appendices, including the required Limitations and Dual-Use / Ethical Considerations appendix. Preexisting code is marked in the README (done for `phase1_confidence/`) and in the report. Also: key figure on page 1, related work stating exactly what is new, limitations, LLM usage statement, pre-registered predictions with outcomes, a "how we tried to break it" section and reliance conditions (see *Reporting*), public code and data. State plainly that Phases 1 and 1B were done before the sprint. Then a third lifeandtimes post.
