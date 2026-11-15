@@ -33,8 +33,9 @@ correct, attribution, ev, cand_mass, greedy, reply. Adapters go to lora_runs/ (g
 Usage (repo root, WSL):
   uv run --extra evals --extra interp python experiments/epic2/phase2_confidence_gap/lora_confidence.py qwen3-1.7b --limit 64
   uv run --extra evals --extra interp python experiments/epic2/phase2_confidence_gap/lora_confidence.py qwen3-1.7b
-  ... qwen3-1.7b --reuse   after an interrupted run: variants whose adapter is already in lora_runs/
-                           are loaded and scored, not retrained
+  ... qwen3-1.7b --reuse   after an interrupted run: variants already scored are read from
+                           lora_runs/<config>/<variant>/scores.parquet; variants with only a saved
+                           adapter are loaded and scored, not retrained
 """
 
 from __future__ import annotations
@@ -189,6 +190,13 @@ def train(model, tok, items: list[dict], device: str, max_steps: int | None) -> 
             if step % 50 == 0 or step == n_steps:
                 print(f"    step {step}/{n_steps} loss {loss.item():.4f} ({time.time() - t0:.0f}s)", flush=True)
     model.eval()
+    # release the optimizer state, gradients and cached training blocks before scoring: on WSL a full
+    # card does not raise out-of-memory, it spills to system RAM and runs 10-100x slower
+    opt.zero_grad(set_to_none=True)
+    del opt, sched, logits, loss
+    import gc
+    gc.collect()
+    torch.cuda.empty_cache()
 
 
 # ----------------------------------------------------------------------------- readout
@@ -249,10 +257,17 @@ def greedy(model, tok, texts: list[str], device: str, batch_size: int) -> list[s
 
 def evaluate(model, tok, t: pd.DataFrame, qs: dict, variant: str, device: str, batch_size: int) -> pd.DataFrame:
     rows = []
+    import torch
+
     for att in ("self", "user"):
         texts = [prompt_text(tok, qs[r.qid], r.text, att) for r in t.itertuples()]
+        t0 = time.time()
         ev = candidate_ev(model, tok, texts, device, batch_size)
+        t1 = time.time()
         gr = greedy(model, tok, texts, device, batch_size * 2)
+        print(f"    scored {variant} {att}: {len(texts)} answers, candidates {t1 - t0:.0f}s, greedy "
+              f"{time.time() - t1:.0f}s, GPU memory peak {torch.cuda.max_memory_allocated() / 2**30:.1f} GB", flush=True)
+        torch.cuda.reset_peak_memory_stats()
         rows.append(t[["qid", "category", "level", "family", "source", "correct"]].assign(
             variant=variant, attribution=att, ev=ev[:, 0], cand_mass=ev[:, 1],
             greedy=[st.parse_confidence(x) for x in gr], reply=[x[:60] for x in gr]))
@@ -290,15 +305,29 @@ def main() -> None:
         m.config.use_cache = False
         return m
 
-    base = fresh()
-    base.eval()
-    results.append(evaluate(base, tok, test, qs, "base", device, args.batch_size))
-    print("  base evaluated; candidate mass median "
-          f"{results[-1].cand_mass.median():.3f}; e.g. {results[-1].reply.iloc[0]!r}")
-    del base
-    torch.cuda.empty_cache()
+    def scores_file(variant: str):
+        return RUNS / args.config / variant / "scores.parquet"
+
+    if args.reuse and scores_file("base").exists():
+        results.append(pd.read_parquet(scores_file("base")))
+        print("  base: reusing saved scores")
+    else:
+        base = fresh()
+        base.eval()
+        results.append(evaluate(base, tok, test, qs, "base", device, args.batch_size))
+        print("  base evaluated; candidate mass median "
+              f"{results[-1].cand_mass.median():.3f}; e.g. {results[-1].reply.iloc[0]!r}")
+        if not args.limit:
+            scores_file("base").parent.mkdir(parents=True, exist_ok=True)
+            results[-1].to_parquet(scores_file("base"), index=False)
+        del base
+        torch.cuda.empty_cache()
 
     for variant in args.variants:
+        if args.reuse and not args.limit and scores_file(variant).exists():
+            results.append(pd.read_parquet(scores_file(variant)))
+            print(f"  --- {variant}: reusing saved scores")
+            continue
         rows, reps = targets(bal, variant)
         texts = [prompt_text(tok, qs[r.qid], r.text, "self") for r in rows.itertuples()]
         items = encode_train(tok, texts, reps)
@@ -315,6 +344,9 @@ def main() -> None:
                 r=RANK, lora_alpha=2 * RANK, lora_dropout=0.05, task_type="CAUSAL_LM",
                 target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]))
             train(model, tok, items, device, 30 if args.limit else None)
+            if not args.limit:
+                model.save_pretrained(saved)  # before scoring, so a crash while scoring keeps the training
+        torch.cuda.empty_cache()
         model.config.use_cache = True
         res = evaluate(model, tok, test, qs, variant, device, args.batch_size)
         results.append(res)
@@ -322,8 +354,8 @@ def main() -> None:
         print(f"    {variant}: own answers, mean EV right {own[own.correct == 1].ev.mean():.3f} vs wrong "
               f"{own[own.correct == 0].ev.mean():.3f}; candidate mass median {res.cand_mass.median():.3f}; "
               f"e.g. {res.reply.iloc[0]!r}")
-        if not args.limit and not reused:
-            model.save_pretrained(saved)
+        if not args.limit:
+            res.to_parquet(scores_file(variant), index=False)
         del model
         torch.cuda.empty_cache()
 
