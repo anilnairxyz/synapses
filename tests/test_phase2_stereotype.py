@@ -35,3 +35,17 @@ def test_null_centres_on_zero():
     vals = [e1.within_spearman(rng.permutation(np.repeat([0.5, 0.8, 0.9], 100)), x, strata)
             for _ in range(300)]
     assert abs(np.mean(vals)) < 0.02
+
+
+def test_win_rate_and_within_auroc():
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "experiments/epic2/phase2_confidence_gap"))
+    import analyze as an
+
+    c = np.array([0.9, 0.5, 0.7, np.nan])
+    w = np.array([0.1, 0.5, 0.8, 0.2])
+    assert an.win_rate(c, w) == pytest.approx((1 + 0.5 + 0) / 3)  # tie half, NaN pair dropped
+    assert an.win_rate(np.ones(5), np.ones(5)) == 0.5  # all tied: no separation
+    # within strata: a score that only tracks the stratum separates nothing
+    s = np.array([0.1, 0.1, 0.9, 0.9])
+    y = np.array([1, 0, 1, 0])
+    assert an.within_auroc(s, y, np.array(["a", "a", "b", "b"])) == 0.5

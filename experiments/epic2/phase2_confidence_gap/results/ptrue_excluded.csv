@@ -1,0 +1,11 @@
+config,variant,n,excluded
+qwen3-8b,ptrue_user_0,7075,16
+qwen3-8b,ptrue_user_8,7075,0
+qwen3-8b,ptrue_assistant_0,7075,0
+qwen3-8b,ptrue_assistant_8,7075,0
+qwen3-1.7b,ptrue_user_0,7084,236
+qwen3-1.7b,ptrue_user_8,7084,0
+qwen3-1.7b,ptrue_assistant_0,7084,0
+qwen3-1.7b,ptrue_assistant_8,7084,0
+qwen3-8b-base,ptrue_user_0,7324,0
+qwen3-8b-base,ptrue_user_8,7324,0

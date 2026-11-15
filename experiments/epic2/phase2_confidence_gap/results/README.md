@@ -16,3 +16,46 @@
 **Against the prediction** (written before the run: "within a level, stated confidence is predicted at least as well by the question's details as by the hidden-state probe; on perception, by neither"): **not supported on recall** (the probe and being right lead; Qwen3-1.7B A recall, look − probe −0.30 [−0.53, −0.04]); **supported on computation** for the after-answer probe (differences include 0) but the before-answer probe leads for Qwen3-8B D; **supported on perception** (neither, though cells are small).
 
 **What it means for the story.** Hypothesis 6 holds where the model has no internal access to its error before answering (computation), not where it does (recall). Stated confidence is a low-resolution readout of the state rather than a disconnected stereotype, which points E4 at resolution (how many distinct values, which direction they follow) and keeps E2 and E3 focused on whether any readout recovers the within-level information the probe has.
+
+## E2 and E3 — Swap and elicitation (2026-11-15)
+
+`analyze.py` on the full 4090 run (`extract_<config>.parquet`, the swap logs) with Phase 1's methods and Phase 1B's out-of-fold probe scores. Tables: `e2_means.csv`, `e2_separation.csv`, `e3_auroc.csv`, `e3_calibration.csv`, `tail.csv`, `tail_quarter.csv`, `ptrue_excluded.csv`. Figures: `figures/e2_separation.png` (key figure), `figures/e2_means.png`, `figures/e3_readouts.png`.
+
+**Run checks.** Every swap reply parsed (2,658 and 2,676, no errors). The refitted probes reproduce Phase 1B on the model's own answers (r = 0.9999 for Qwen3-8B and the base model on both positions; 0.9959 before / 0.9997 after for Qwen3-1.7B). P(True) answers left out under the rule fixed before analysis (< 0.5 probability on the two letters): 16 of 7,075 (Qwen3-8B) and 236 of 7,084 (Qwen3-1.7B), all in the neutral zero-shot variant.
+
+**E2: the same question, a correct and a plausible wrong answer.** Separation = share of the 150 questions per kind where the correct answer gets more confidence (0.5 = none), 95% bootstrap intervals.
+
+- **"Your answer": no separation at all.** With the answer in the assistant turn, verbal confidence is 0.50 to 0.55 on every kind for both instruct models; Qwen3-8B gives 0.97 to 1.00 on average to planted wrong answers and puts 0.9 or more on every one of them (100% on all three kinds). The model is certain of whatever it is made to have said.
+- **"My answer" (the user's): partial separation, except perception.** The same answers attributed to the user: Qwen3-8B 0.64 [0.59, 0.70] recall, 0.67 [0.62, 0.72] computation, 0.52 [0.50, 0.54] perception; Qwen3-1.7B 0.54, 0.63, 0.56. Confidence in a planted wrong answer drops by 0.21 (recall) and 0.37 (computation) for Qwen3-8B and 0.31 to 0.59 for Qwen3-1.7B when it is the user's: Sanz-Guerrero et al.'s ownership bias, replicated, and here it does not only inflate confidence, it removes its ability to tell right from wrong.
+- **P(True) separates moderately in both placements** (0.53 to 0.74 for the instruct models, 0.65 to 0.93 for the base model). Placing the answer in the assistant turn raises P(True) a lot (Qwen3-8B 8-shot: +0.26 to +0.33 recall, +0.41 to +0.60 computation, +0.66 to +0.73 perception) but changes separation much less.
+- **The probe separates, but much of it is familiarity.** On computation the probe after the answer separates 0.95 (8B), 0.85 (1.7B), 0.99 (base), but the answer's own likelihood under the model does almost as well (0.93, 0.83, 0.97): a planted number is one the model would not have written. Comparing only answers of similar likelihood, the probe keeps 0.80 (8B) and 0.74 (base) on computation, 0.57 for 1.7B; on recall and perception it falls to 0.53 to 0.58, about where P(True) is (0.48 to 0.71). The layer-0 control is near 0.5 on computation (0.50 to 0.53), 0.46 to 0.60 elsewhere. So with planted answers, "the state knows it is wrong" is mostly "the state knows it would not say this", except on computation for the 8B models.
+
+**E3: confidence in the model's own answers, within levels.** Test set (150 per kind, wide intervals) and the ~5,700 training questions (P(True) and out-of-fold probe only, tight intervals).
+
+- **The probe after the answer is the ceiling everywhere:** training questions 0.86 to 0.91 on recall and computation, 0.70 to 0.72 on perception, for all three models.
+- **P(True) is the best way of asking, still below the probe.** Training questions, best variant per cell: Qwen3-8B 0.81 recall, 0.79 to 0.80 computation, 0.69 to 0.70 perception (0.02 to 0.10 below the probe; on perception within 0.02, intervals including 0); Qwen3-1.7B 0.69, 0.76, 0.59 (0.07 to 0.21 below).
+- **What the model says is far below.** Test set: stated with the answer (A) 0.50 to 0.68; post-hoc "your answer" 0.49 to 0.68 (0.20 to 0.32 below the probe, intervals excluding 0); user framing 0.52 to 0.77, better than post-hoc on recall and computation, not perception.
+- **Neutral beats own placement on recall.** Training questions: Qwen3-8B 0.81 neutral vs 0.74 own (8-shot), Qwen3-1.7B 0.69 vs 0.57; computation level; perception 0.70 vs 0.65.
+- **The base model.** Its P(True) is not better at discrimination than the instruct model's (training: 0.77 / 0.71 to 0.74 / 0.54 vs Qwen3-8B's 0.81 / 0.79 / 0.70), but its token probability (E) remains the best output-level readout in the study (test 0.95 recall, 0.91 computation), as in Phase 1.
+- **Calibration** (ECE, training questions): the instruct models' own-placement P(True) is badly overconfident (0.27 to 0.96); neutral 8-shot is the best calibrated readout for Qwen3-8B on computation and perception (0.06, 0.05), not recall (0.47); the base model's P(True) 0.07 to 0.40.
+
+**The confident tail.** Qwen3-8B states 0.9 or more (A) on every test answer, and 60% to 76% of those answers are wrong. The pre-specified matched-share comparison is therefore degenerate for Qwen3-8B (matching a 100% share flags everything); the secondary measure, added after seeing that, is the error rate in each readout's most confident quarter (`tail_quarter.csv`): the probe's top quarter has the fewest errors in every cell (Qwen3-8B training computation 3%, against 10% to 19% for P(True) and 66% overall; recall 52% vs 60% to 66% and 86% overall), while stated confidence's top quarter is about as wrong as the average answer (test: A 58% vs 60% overall on computation, 62% vs 63% on perception).
+
+**Predictions** (written in the plan before the runs):
+
+| Prediction | Outcome |
+| --- | --- |
+| E1: stated confidence follows the question's details at least as well as the probe; perception: neither | Not supported on recall; supported on computation and perception (see E1) |
+| E2: about an answer in its own mouth, nearly as sure of wrong as right | **Supported, strongly**: separation 0.50 to 0.55; 100% of planted wrong answers at ≥ 0.9 (Qwen3-8B) |
+| E2: the probe on the same answers tells them apart | Supported before the familiarity control; after it, only on computation for the 8B models (0.80, 0.74) |
+| E2: ownership bias replicates | **Supported**: +0.2 to +0.6 on wrong answers (verbal); +0.1 to +0.7 (P(True)) |
+| E2: ownership bias largest on perception | Mixed: verbal, no (Qwen3-8B is at ceiling either way on perception); P(True), yes for Qwen3-8B (+0.66 to +0.73) |
+| E3: P(True) and user framing beat stated confidence within levels on every kind | P(True): yes for Qwen3-8B, not on perception for Qwen3-1.7B; user framing: recall and computation, not perception |
+| E3: both stay below the probe | **Supported** (training-set intervals exclude 0, except Qwen3-8B perception) |
+| E3: the gap to the probe is largest on perception | Not supported (smallest on perception for Qwen3-8B) |
+| E3: own placement raises P(True) but changes AUROC by < 0.05 | Raises it: yes; AUROC: computation yes, recall no (−0.07, −0.12) |
+| E3: base better calibrated, AUROC within 0.05 of instruct | Calibration partly (better than own placement, not than neutral 8-shot); AUROC not supported: the instruct model's P(True) discriminates better (up to +0.16, perception) |
+| Tail: most wrong answers at ≥ 0.9 (Qwen3-8B, computation and recall) | **Supported**: all of them |
+| Tail: the probe at the same flag rate gives high scores to fewer wrong answers | Not testable as specified (rate 100%); secondary measure: the probe's top quarter has the fewest errors everywhere |
+
+**What it means for the story.** The model's verbal confidence in an answer depends on whose answer it is, not on whether it is right: in its own turn, separation vanishes (0.50 to 0.55) while the same model, judging the same answer as the user's, partly separates on recall and computation. The information is in the model (P(True) recovers much of it; the probe more), so the failure is in the act of reporting on one's own answer (hypothesis 5, rationalisation, for verbal reports), on top of a coarse readout (E1). Usable result: for these models, do not ask "how sure are you of your answer"; ask P(True) about the answer framed neutrally, with worked examples, or use the probe; never trust a stated 0.9.
