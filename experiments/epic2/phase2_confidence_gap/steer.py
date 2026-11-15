@@ -17,6 +17,9 @@ position, during the prompt and the reply:
              score by one SD); the random direction gets the same absolute size. Each push is
              also printed as a share of the median state norm, since the probe axes differ a
              lot in spread (Qwen3-8B: computation s = 0.17 at norm 137, recall 7.2 at 262)
+             A second scale, in shares of the median state norm (+-0.25, +-0.5), makes sure the
+             push is large in absolute terms too (the first smoke run moved nothing at up to
+             8 SDs, which on computation was 1% of the norm)
   attribution  "self" (the answer in the assistant turn, "your answer") or "user" ("my
              answer"), exactly as in swap_task.py
 
@@ -26,7 +29,7 @@ of rows equal to the swap logs' values is printed; small differences come from v
 kernels).
 
 Writes results/e4_steer_<config>.parquet: qid, category, source, correct, attribution,
-direction, alpha, confidence.
+direction, unit, alpha, push_share_of_norm, confidence, reply.
 
 Prediction (plan, before the run): steering along the probe direction moves "my answer"
 confidence in the direction of the push, more than the random control, while "your answer"
@@ -50,7 +53,8 @@ import analyze_swaps as an
 import phase1
 import swap_task as st
 
-ALPHAS = (-8.0, -4.0, -2.0, 0.0, 2.0, 4.0, 8.0)
+ALPHAS = (-8.0, -4.0, -2.0, 0.0, 2.0, 4.0, 8.0)  # in SDs of the probe axis
+NORM_FRACS = (-0.5, -0.25, 0.25, 0.5)  # in shares of the median state norm (a second, absolute scale)
 DIRECTIONS = ("probe", "random")
 PER_CELL = 50  # answers per kind x source: 3 x 3 x 50 = 450 rows, about 300 to 450 answers
 KINDS = ("recall", "computation", "perception")
@@ -62,7 +66,7 @@ MAX_NEW = 24
 def sample_rows(config: str, per_cell: int) -> pd.DataFrame:
     meta = pd.read_parquet(STATES / config / "swaps.parquet")  # row order of swaps.npy
     sw = pd.read_json(phase1.DATA / "swaps.jsonl", lines=True)
-    sw = sw[(sw.config == config) & (sw.split == "test")][["qid", "source", "text", "correct"]]
+    sw = sw[(sw.config == config) & (sw.split == "test")][["qid", "source", "text"]]  # meta has correct
     d = meta.reset_index().merge(sw, on=["qid", "source"], how="left", validate="one_to_one")
     n = min(per_cell, int(d.groupby(["category", "source"]).size().min()))
     return d.groupby(["category", "source"]).sample(n=n, random_state=SEED).reset_index(drop=True)
@@ -155,19 +159,22 @@ def main() -> None:
                                                  add_generation_prompt=True, enable_thinking=False)
                          for r in k.itertuples()]
                 v = vecs[kind]
+                settings = [("sd", a) for a in ALPHAS] + [("norm", f) for f in NORM_FRACS]
                 for direction in DIRECTIONS:
-                    for alpha in ALPHAS:
+                    for unit, alpha in settings:
                         if alpha == 0 and direction == "random":
                             continue  # the same as probe at 0
-                        vec = None if alpha == 0 else alpha * v["s"] * v[direction]
+                        size = alpha * (v["s"] if unit == "sd" else v["norm"])
+                        vec = None if alpha == 0 else size * v[direction]
                         t0 = time.time()
                         replies = generate(model, tok, texts, vec, v["layer"], args.batch_size, device)
                         conf = [st.parse_confidence(x) for x in replies]
                         for r, c, x in zip(k.itertuples(), conf, replies, strict=True):
                             out.append({"qid": r.qid, "category": kind, "source": r.source, "attribution": att,
-                                        "direction": direction, "alpha": alpha, "confidence": c, "reply": x[:80]})
+                                        "direction": direction, "unit": unit, "alpha": alpha,
+                                        "push_share_of_norm": abs(size) / v["norm"], "confidence": c, "reply": x[:80]})
                         if args.limit:
-                            print(f"  {att} {kind} {direction} {alpha:+.0f}: {time.time() - t0:.0f}s, "
+                            print(f"  {att} {kind} {direction} {unit} {alpha:+g}: {time.time() - t0:.0f}s, "
                                   f"parsed {np.mean([c is not None for c in conf]):.2f}, "
                                   f"mean {np.nanmean([np.nan if c is None else c for c in conf]):.2f}; "
                                   f"e.g. {replies[0][:40]!r}")
@@ -177,7 +184,8 @@ def main() -> None:
         e2["attribution"] = e2.att.str.replace("verbal_", "")
         z = res[res.alpha == 0].merge(e2[["qid", "source", "attribution", "e2"]], on=["qid", "source", "attribution"])
         print(f"  alpha 0 equals the E2 confidence on {(np.isclose(z.confidence, z.e2)).mean():.0%} of {len(z)}")
-        print(res.groupby(["attribution", "direction", "alpha"]).confidence.mean().unstack().round(3).to_string())
+        print(res.groupby(["attribution", "category", "direction", "unit", "alpha"]).confidence.mean()
+              .unstack(["unit", "alpha"]).round(2).to_string())
         if not args.limit:
             res.to_parquet(phase1.RESULTS / f"e4_steer_{config}.parquet", index=False)
             print(f"  wrote results/e4_steer_{config}.parquet")
