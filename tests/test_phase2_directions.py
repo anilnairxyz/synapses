@@ -32,3 +32,14 @@ def test_boot_questions_keeps_questions_whole():
         picked = qids[idx]
         for q in set(picked):
             assert (picked == q).sum() % (qids == q).sum() == 0
+
+
+def test_steer_messages_match_swap_task():
+    import steer
+    import swap_task as st
+
+    for att in ("self", "user"):
+        m = steer.messages("What is 2 × 3?", "6", att)
+        ref = st.messages("What is 2 × 3?", "6", att)
+        assert [x["content"] for x in m] == [x.content for x in ref]
+        assert [x["role"] for x in m] == [x.role for x in ref]
