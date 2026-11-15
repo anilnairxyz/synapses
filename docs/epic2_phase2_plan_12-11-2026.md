@@ -8,7 +8,7 @@ Follows [Phase 1](epic2_phase1_plan_03-11-2026.md) ([results](../experiments/epi
 
 *Whether an LLM can know it is wrong depends on how the answer is produced, and its confidence reports fail to reflect what it knows; we test why.*
 
-The first half is measured (Phases 1 and 1B): recall is known before answering, computation only after, perception barely; hidden-state probes beat stated confidence on every kind, and base and instruct models hold the same internal knowledge. The sprint adds the second half: three controlled pieces (a stereotype analysis on existing data, a swap experiment, an elicitation comparison), then two that test the deepest explanations (E4: is the direction behind stated confidence the one that encodes correctness, and does steering move it; E5: does training on correctness close the gap).
+The first half is measured (Phases 1 and 1B): recall is known before answering, computation only after, perception barely; hidden-state probes beat stated confidence on every kind, and base and instruct models hold the same internal knowledge. The sprint adds the second half: three controlled pieces (a stereotype analysis on existing data, a swap experiment, an elicitation comparison), then two that test the deepest explanations (E4: which confidence report reads the model's correctness representation, by readouts on the states and by steering; E5: does training on correctness close the gap).
 
 **What we add, against prior work** (from the study step, below):
 
@@ -128,7 +128,7 @@ Read from the arXiv HTML (v2): main text and limitations verbatim; appendix deta
 
 **What changes after Ji et al.**
 
-- *Hypothesis 1 and steering (now E4):* steering expressed uncertainty along one direction is done. What stays open is whether the direction behind **stated confidence** is the same as the direction that encodes **correctness**. E4 is built around that, starting with a cheap comparison on existing states: a stated-confidence direction (high vs low A, difference of means) against the correctness probe, by cosine and by within-level AUROC for correctness. Caveat: Qwen3-8B states ≥ 0.9 almost always, so the low set is small.
+- *Hypothesis 1 and steering (now E4):* steering expressed uncertainty along one direction is done. What stays open is whether the direction behind **stated confidence** is the same as the direction that encodes **correctness**. E4 is built around that, starting with a cheap comparison on existing states: a stated-confidence direction (high vs low A, difference of means) against the correctness probe, by cosine and by within-level AUROC for correctness. Caveat: Qwen3-8B states ≥ 0.9 almost always, so the low set is small. (Superseded 2026-11-15: E4 was revised after E2; see the E4 section.)
 - *Framing:* "the words do not reflect the internal state" is not new for recall. What we add: correctness rather than sample disagreement as the reference; numeric stated confidence rather than hedging; three kinds of question; within levels; base models.
 - *Tail measure:* align with their "confident hallucination" (wrong and stated with high confidence) and cite it as precedent.
 - *Hypothesis 3:* they fix the gap by steering, not by asking differently, so E3 is not covered.
