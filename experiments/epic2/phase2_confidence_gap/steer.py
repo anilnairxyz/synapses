@@ -96,7 +96,10 @@ def generate(model, tok, texts: list[str], vec, layer: int, batch_size: int, dev
     """Greedy replies with ``vec`` (or None) added to hidden_states[layer] at every position."""
     import torch
 
-    block = model.model.layers[layer - 1]  # its output is hidden_states[layer]
+    # hidden_states[layer] is the output of decoder layer `layer`; the last entry is taken after
+    # the final norm (HF Qwen3), so a probe on the last layer is steered after model.model.norm
+    n = len(model.model.layers)
+    block = model.model.norm if layer == n else model.model.layers[layer - 1]
     add = None if vec is None else torch.tensor(vec, device=device, dtype=model.dtype)
 
     def hook(_m, _inp, out):
