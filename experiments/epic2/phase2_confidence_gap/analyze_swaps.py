@@ -62,8 +62,9 @@ import pandas as pd
 import phase1
 
 CONFIGS = ("qwen3-8b", "qwen3-1.7b", "qwen3-8b-base")
-E2B = ("claude-haiku", "qwen3-8b-think")  # verbal only (E2b)
-SWAP_RUNS = {"claude-haiku": "api/full", "qwen3-8b-think": "4090/full"}
+E2B = ("claude-haiku", "qwen3-8b-think", "gpt-4o", "gpt-5-nano", "grok-4-1-fast")  # verbal only (E2b)
+SWAP_RUNS = {"claude-haiku": "api/full", "qwen3-8b-think": "4090/full", "gpt-4o": "foundry/full",
+             "gpt-5-nano": "foundry/full", "grok-4-1-fast": "foundry/full"}
 INSTRUCT = ("qwen3-8b", "qwen3-1.7b")
 KINDS = ("recall", "computation", "perception")
 PTRUE = ("ptrue_user_0", "ptrue_user_8", "ptrue_assistant_0", "ptrue_assistant_8")
@@ -396,8 +397,9 @@ def fig_ownership(sep: pd.DataFrame) -> None:
     pl = phase1.plots
     import matplotlib.pyplot as plt
 
-    models = [c for c in ("qwen3-1.7b", "qwen3-8b", "qwen3-8b-think", "claude-haiku") if c in set(sep.config)]
-    fig, axes = plt.subplots(1, 3, figsize=(10.5, 3.6), sharey=True, sharex=True)
+    models = [c for c in ("qwen3-1.7b", "qwen3-8b", "qwen3-8b-think", "claude-haiku", "gpt-4o", "gpt-5-nano",
+                          "grok-4-1-fast") if c in set(sep.config)]
+    fig, axes = plt.subplots(1, 3, figsize=(10.5, 1.4 + 0.55 * len(models)), sharey=True, sharex=True)
     for c, kind in enumerate(KINDS):
         ax = axes[c]
         for i, cfg in enumerate(models):

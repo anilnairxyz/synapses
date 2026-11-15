@@ -47,7 +47,7 @@ import pandas as pd
 import phase1
 
 CONFIGS = ("qwen3-8b", "qwen3-1.7b", "qwen3-8b-base")
-E2B = ("claude-haiku", "qwen3-8b-think")  # beyond Qwen / thinking: test questions, verbal only
+E2B = ("claude-haiku", "qwen3-8b-think", "gpt-4o", "gpt-5-nano", "grok-4-1-fast")  # beyond Qwen: test, verbal only
 KINDS = ("recall", "computation", "perception")
 MAX_SENTENCE = 160  # longer own answers (rambling, repeated) are not used as a format
 OUT = phase1.DATA / "swaps.jsonl"

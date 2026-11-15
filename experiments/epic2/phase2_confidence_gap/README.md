@@ -22,6 +22,7 @@ Inputs read from Phase 1 (unchanged; `../phase1_confidence/results/rows.parquet`
 - `directions.py`: E4 Part A (PC, CPU): which verbal confidence can be read linearly from the answer's state, and how its direction relates to the correctness probe's; saves the probe directions for steering.
 - `steer.py`: E4 Part B on the 4090 (HF): the E2 confidence conversations with the correctness probe's direction (or a random one) added at the probe's layer.
 - `analyze_steer.py`: E4 Part B analysis (Mac): shift per condition, probe vs random, separation and output collapse under steering.
+- `office/` and `make_office_bundle.py`: E2b on Azure AI Foundry (GPT-4o, GPT-5 nano, Grok 4.1 Fast): a self-contained bundle for the office; see `office/README.md`.
 - `run_4090.sh`: `smoke` or `full`, optionally only `extract` or `swap`.
 - `results/`: tables, figures, and the findings so far ([`results/README.md`](results/README.md)).
 
