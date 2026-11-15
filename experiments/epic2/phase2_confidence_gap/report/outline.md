@@ -84,7 +84,7 @@ Optional small Table 1: models × settings × number of replies (could go to the
 
 ### 4.3 The information is there: other readouts on the same answers
 
-- On the model's own answers (Qwen; ~5,700 training questions, out-of-fold): probe 0.86 to 0.91 on recall and computation, 0.70 to 0.72 on perception; best P(True) 0.69 to 0.81 (Qwen3-8B within 0.02 to 0.10 of the probe); verbal (test set) 0.49 to 0.68, 0.20 to 0.32 below the probe with intervals excluding 0. (`e3_auroc.csv`; Figure 2 optional: `figures/e3_readouts.png`)
+- On the model's own answers (Qwen; ~5,700 training questions, out-of-fold): probe 0.86 to 0.91 on recall and computation, 0.70 to 0.72 on perception; best P(True) variant 0.70 to 0.81 for Qwen3-8B (0.02 to 0.10 below the probe) and 0.59 to 0.76 for Qwen3-1.7B; verbal (test set) 0.49 to 0.68, 0.20 to 0.32 below the probe, intervals excluding 0 in five of six cells (Qwen3-1.7B recall, with 15 right answers, reaches 0). (`e3_auroc.csv`; Figure 2 optional: `figures/e3_readouts.png`)
 - On planted answers, the probe separates computation at 0.95 (8B), but the answer's likelihood does almost as well (0.93): within likelihood bands the probe keeps 0.80 (8B) on computation and drops to 0.53 to 0.58 on recall and perception. Say this plainly: much of "the state knows it is wrong" on planted answers is "the state knows it would not have said this". (How we tried to break our own claim.)
 - The confident tail: Qwen3-8B states ≥ 0.9 on every test answer, and 60% to 76% of them are wrong; the probe's most confident quarter has the fewest errors in every cell (training computation: 3% vs 66% overall). (`tail.csv`, `tail_quarter.csv`)
 
