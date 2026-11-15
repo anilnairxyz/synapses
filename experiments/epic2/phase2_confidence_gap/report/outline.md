@@ -110,7 +110,13 @@ Restate the claim, the evidence in one line, the rule for practitioners.
 
 ## Code and data
 
-Link to the public repo (to confirm: is synapses public, or will a copy be published?). Say: Phase 2 code is `experiments/epic2/phase2_confidence_gap/`; Phase 1 code (preexisting) is `experiments/epic2/phase1_confidence/`; tag `sprint-start` marks the boundary; `verify.py` recomputes every number in the report.
+Three links (repo is public):
+
+- Sprint work: https://github.com/anilnairxyz/synapses/tree/sprint-submission/experiments/epic2/phase2_confidence_gap (its README explains the files, how to rerun, and what is reused from Phase 1).
+- Preexisting work (Phases 1 and 1B, 3 to 12 November): https://github.com/anilnairxyz/synapses/tree/sprint-submission/experiments/epic2/phase1_confidence
+- Exactly what changed during the sprint: https://github.com/anilnairxyz/synapses/compare/sprint-start...sprint-submission
+
+`sprint-submission` is a tag to create just before submitting (I will do it), so the links show the code as submitted even if the repo changes later. Say in one sentence that `verify.py` recomputes every number in the report.
 
 ## Author contributions (optional)
 
