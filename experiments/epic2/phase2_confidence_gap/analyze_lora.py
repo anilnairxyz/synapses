@@ -128,9 +128,6 @@ def figure(res: pd.DataFrame) -> None:
     fig.suptitle("Training the 'your answer' report on whether each answer was right", y=1.08, fontweight="bold")
     fig.supxlabel("Within-level AUROC of the reported confidence for the model's own answer being right",
                   fontsize=10, color=pl.INK2)
-    pl.caption(fig, "LoRA on the training questions; tested on the test questions (150 per kind), 95% bootstrap "
-                    "intervals. Dashed: the Phase 1B probe on the same answers. Held out: trained on the other "
-                    "two kinds only.", y=-0.03)
     fig.tight_layout()
     an.save(fig, "e5_lora")
 
