@@ -384,10 +384,6 @@ def fig_separation(sep: pd.DataFrame) -> None:
                  y=1.09, fontweight="bold")
     fig.supxlabel("Share of questions where the correct answer gets more confidence (0.5 = none)",
                   fontsize=10, color=pl.INK2)
-    pl.caption(fig, "Each question gets a correct and a plausible wrong answer, built by construction and "
-                    "written in the model's own format. 95% bootstrap intervals over the 150 questions per "
-                    "kind. Verbal readouts: instruct models only. Base model: P(True) neutral, probe, "
-                    "likelihood.", y=-0.04)
     fig.tight_layout()
     save(fig, "e2_separation")
 
@@ -469,8 +465,6 @@ def fig_means(means: pd.DataFrame) -> None:
     h, lab = axes[0, 0].get_legend_handles_labels()
     fig.legend(h, lab, loc="upper center", ncol=2, bbox_to_anchor=(0.5, 1.04))
     fig.suptitle("Confidence in a given answer: as the model's own vs as the user's", y=1.09, fontweight="bold")
-    pl.caption(fig, "Own: the model's Phase 1 answer. Correct and wrong: injected, in the model's format. "
-                    "\"Your answer\": the answer in the assistant turn. \"My answer\": the user gives it.", y=-0.03)
     fig.tight_layout()
     save(fig, "e2_means")
 
@@ -507,8 +501,6 @@ def fig_e3(auc: pd.DataFrame) -> None:
     fig.suptitle("Which way of asking recovers what the model knows? (own answers, within levels)",
                  y=1.09, fontweight="bold")
     fig.supxlabel("Within-level AUROC for the model's own answer being right", fontsize=10, color=pl.INK2)
-    pl.caption(fig, "Test questions (150 per kind); 95% bootstrap intervals. Blue: hidden-state probe "
-                    "(the ceiling); orange: P(True); grey: Phase 1 methods and the verbal readouts.", y=-0.03)
     fig.tight_layout()
     save(fig, "e3_readouts")
 

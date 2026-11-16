@@ -265,13 +265,6 @@ def figure(res: pd.DataFrame) -> None:
     fig.legend(seen.values(), seen.keys(), loc="upper center", ncol=3, bbox_to_anchor=(0.5, 1.02))
     fig.suptitle("What stated confidence tracks within a difficulty level", y=1.07, fontweight="bold")
     fig.supxlabel("Within-level Spearman correlation with stated confidence", fontsize=10, color=pl.INK2)
-    pl.caption(fig, "Each dot: how closely a model's stated confidence follows a quantity, using only "
-                    "variation among questions of the same level (and task family or relation); 95% "
-                    "bootstrap intervals. Question's look: subject popularity (recall), minus number "
-                    "size (computation), minus word length (perception), fixed in advance. Probe: "
-                    "Phase 1B hidden-state probe, after answering for A, before for D (open models "
-                    "only). Missing rows or dots: stated confidence did not vary within levels, or "
-                    "(being right) nearly every answer within each level was right.", y=-0.04)
     fig.tight_layout()
     out = phase1.RESULTS / "figures"
     out.mkdir(parents=True, exist_ok=True)

@@ -124,9 +124,6 @@ def figure(r: pd.DataFrame) -> None:
                  y=1.09, fontweight="bold")
     fig.supxlabel("Push along the correctness probe (SDs of the probe axis; − = towards wrong, + = towards right)",
                   fontsize=10, color=pl.INK2)
-    pl.caption(fig, "A vector added after the layer the Phase 1B probe reads, at every position; solid: the "
-                    "probe's direction, dotted: a random direction of the same size. 50 answers per kind and "
-                    "source (own, correct, wrong), greedy decoding.", y=-0.03)
     fig.tight_layout()
     an.save(fig, "e4_steer")
 
