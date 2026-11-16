@@ -1,0 +1,69 @@
+% Apart Research sprint report, matching the official Word template (apart_template.docx):
+% US Letter, 1 inch margins, Old Standard 11 pt, centred title between rules, italic abstract,
+% sprint footnote on the title. build.py fills the title, authors, abstract and body placeholders.
+\documentclass[11pt]{article}
+\usepackage[letterpaper,margin=1in]{geometry}
+\usepackage{fontspec}
+\setmainfont{OldStandard}[Extension=.otf,UprightFont=*-Regular,ItalicFont=*-Italic,BoldFont=*-Bold,BoldItalicFont=*-BoldItalic]
+\usepackage{graphicx}
+\usepackage{longtable,booktabs,array,calc}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{caption}
+\usepackage[hyphens]{xurl}
+\usepackage{xcolor}
+\definecolor{linkblue}{RGB}{17,85,204}
+\usepackage[colorlinks=true,linkcolor=black,citecolor=black,urlcolor=linkblue]{hyperref}
+\usepackage{float}
+
+\urlstyle{same}
+\graphicspath{{../}{../../}}
+\setcounter{secnumdepth}{0}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+\linespread{1.08}
+\setlist{itemsep=2pt,topsep=4pt}
+\providecommand{\tightlist}{\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\providecommand{\pandocbounded}[1]{#1}
+\def\real#1{#1}
+
+\titleformat{\section}{\bfseries\fontsize{14}{17}\selectfont}{}{0pt}{}
+\titleformat{\subsection}{\bfseries\fontsize{12.5}{15}\selectfont}{}{0pt}{}
+\titleformat{\subsubsection}{\bfseries\normalsize}{}{0pt}{}
+\titlespacing*{\section}{0pt}{14pt}{4pt}
+\titlespacing*{\subsection}{0pt}{10pt}{2pt}
+\titlespacing*{\subsubsection}{0pt}{8pt}{2pt}
+\captionsetup{font=small,labelfont=bf,labelsep=period,justification=justified,singlelinecheck=false}
+\setlength{\LTpre}{6pt}\setlength{\LTpost}{6pt}
+
+\begin{document}
+
+\begingroup
+\renewcommand{\thefootnote}{\arabic{footnote}}
+\noindent\rule{\textwidth}{1.2pt}
+\vspace{4pt}
+\begin{center}
+{\bfseries\fontsize{20}{24}\selectfont $title$\footnote{Research conducted at the \href{https://apartresearch.com/sprints/ai-x-epistemics-research-sprint-2026-11-13-to-2026-11-15}{AI x Epistemics Research Sprint}, November 2026.}}
+\end{center}
+\vspace{2pt}
+\noindent\rule{\textwidth}{0.6pt}
+\begin{center}
+$authors$
+
+\vspace{6pt}
+\textbf{With}\\
+Apart Research
+\end{center}
+\endgroup
+
+\begin{center}
+{\bfseries\fontsize{14}{17}\selectfont Abstract}
+\end{center}
+\vspace{-6pt}
+\begin{quote}
+\itshape $abstract$
+\end{quote}
+
+$body$
+
+\end{document}
