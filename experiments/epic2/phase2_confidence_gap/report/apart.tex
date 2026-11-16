@@ -5,6 +5,9 @@
 \usepackage[letterpaper,margin=1in]{geometry}
 \usepackage{fontspec}
 \setmainfont{OldStandard}[Extension=.otf,UprightFont=*-Regular,ItalicFont=*-Italic,BoldFont=*-Bold,BoldItalicFont=*-BoldItalic]
+\usepackage{amssymb}
+\usepackage{newunicodechar}
+\newunicodechar{✓}{\ensuremath{\checkmark}}
 \usepackage{graphicx}
 \usepackage{longtable,booktabs,array,calc}
 \usepackage{enumitem}
@@ -19,6 +22,7 @@
 \urlstyle{same}
 \graphicspath{{../}{../../}}
 \setcounter{secnumdepth}{0}
+\setlength{\emergencystretch}{2em}
 \setlength{\parindent}{0pt}
 \setlength{\parskip}{6pt}
 \linespread{1.08}
@@ -35,6 +39,8 @@
 \titlespacing*{\subsubsection}{0pt}{8pt}{2pt}
 \captionsetup{font=small,labelfont=bf,labelsep=period,justification=justified,singlelinecheck=false}
 \setlength{\LTpre}{6pt}\setlength{\LTpost}{6pt}
+\usepackage{etoolbox}
+\AtBeginEnvironment{longtable}{\small}
 
 \begin{document}
 
