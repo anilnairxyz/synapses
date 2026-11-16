@@ -393,40 +393,54 @@ def fig_separation(sep: pd.DataFrame) -> None:
 
 
 def fig_ownership(sep: pd.DataFrame) -> None:
-    """Key figure: separation under "your answer" vs "my answer", every model with verbal readouts."""
+    """Key figure: separation under "your answer" vs "my answer", every model with verbal readouts,
+    grouped into models that answer directly and models that reason first."""
     pl = phase1.plots
     import matplotlib.pyplot as plt
+    from matplotlib.transforms import blended_transform_factory
 
-    models = [c for c in ("qwen3-1.7b", "qwen3-8b", "qwen3-8b-think", "claude-haiku", "gpt-4o", "gpt-5-nano",
-                          "grok-4-1-fast") if c in set(sep.config)]
-    fig, axes = plt.subplots(1, 3, figsize=(10.5, 1.4 + 0.55 * len(models)), sharey=True, sharex=True)
+    have = set(sep.config)
+    groups = [("Answer directly", [c for c in ("qwen3-1.7b", "qwen3-8b", "claude-haiku", "gpt-4o", "grok-4-1-fast")
+                                   if c in have]),
+              ("Reason first", [c for c in ("qwen3-8b-think", "gpt-5-nano") if c in have])]
+    rows, ypos, heads, y = [], [], [], 0.0
+    for name, ms in groups:
+        heads.append((name, y))
+        y += 0.75
+        for m in ms:
+            rows.append(m)
+            ypos.append(y)
+            y += 1.0
+        y += 0.35
+    fig, axes = plt.subplots(1, 3, figsize=(10.5, 1.2 + 0.52 * y), sharey=True, sharex=True)
     for c, kind in enumerate(KINDS):
         ax = axes[c]
-        for i, cfg in enumerate(models):
+        r0 = ypos[len(groups[0][1])] - 0.5 - 0.75
+        ax.axhspan(r0, y - 0.35, color=pl.MUTED, alpha=0.12, lw=0)
+        for cfg, yy in zip(rows, ypos, strict=True):
             g = sep[(sep.config == cfg) & (sep.kind == kind)].set_index("readout")
-            for r, colour, dy in (("verbal_self", pl.ORANGE, -0.13), ("verbal_user", pl.BLUE, 0.13)):
+            for r, colour, dy in (("verbal_self", pl.ORANGE, -0.15), ("verbal_user", pl.BLUE, 0.15)):
                 if r not in g.index:
                     continue
-                y = i + dy
-                ax.plot([g.loc[r, "win_lo"], g.loc[r, "win_hi"]], [y, y], color=colour, lw=1.5, alpha=0.6)
-                ax.plot(g.loc[r, "win"], y, "o", color=colour, ms=6.5, mec=pl.SURFACE, mew=1,
-                        label=NAMES[r] if (c == 0 and i == 0) else None)
+                ax.plot([g.loc[r, "win_lo"], g.loc[r, "win_hi"]], [yy + dy, yy + dy], color=colour, lw=1.5,
+                        alpha=0.6)
+                ax.plot(g.loc[r, "win"], yy + dy, "o", color=colour, ms=6.5, mec=pl.SURFACE, mew=1,
+                        label=NAMES[r] if (c == 0 and cfg == rows[0]) else None)
         ax.axvline(0.5, color=pl.MUTED, lw=0.8)
-        ax.set_yticks(range(len(models)), [pl.MODEL_NAME[m] for m in models])
+        ax.set_yticks(ypos, [pl.MODEL_NAME[m] for m in rows])
         ax.set_xlim(0.35, 1.03)
+        ax.set_ylim(y - 0.35, -0.3)
         ax.set_title(kind.capitalize())
-        if c == 0:
-            ax.invert_yaxis()
+    tr = blended_transform_factory(axes[0].transAxes, axes[0].transData)
+    for name, yy in heads:
+        axes[0].text(-0.02, yy + 0.15, name, transform=tr, ha="right", va="center", fontweight="bold",
+                     fontsize=10.5, color=pl.INK if hasattr(pl, "INK") else "black")
     h, lab = axes[0].get_legend_handles_labels()
     fig.legend(h, lab, loc="upper center", ncol=2, bbox_to_anchor=(0.5, 1.06))
     fig.suptitle("Unless it reasons first, a model barely checks an answer placed in its own turn",
                  y=1.13, fontweight="bold")
     fig.supxlabel("Share of questions where the correct answer gets more confidence (0.5 = none)",
                   fontsize=10, color=pl.INK2)
-    pl.caption(fig, "Same question, a correct and a plausible wrong answer (built by construction, in the "
-                    "model's own format). \"Your answer\": the answer sits in the assistant turn and the user "
-                    "asks for the probability it is correct. \"My answer\": the user gives the same answer as "
-                    "theirs. 150 questions per kind, 95% bootstrap intervals.", y=-0.06)
     fig.tight_layout()
     save(fig, "e2_ownership")
 
