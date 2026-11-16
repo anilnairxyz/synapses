@@ -10,7 +10,7 @@ Why it matters (theory of change, one or two sentences in the intro, again in th
 
 ## Title
 
-**LLMs are too certain of whatever they said** (chosen 2026-11-15, working title). The reasoning models are the exception, so the abstract and introduction should say early that the claim is about models that answer without reasoning first.
+**Words in the model's mouth**, subtitle *Without reasoning, models do not check an answer in their own turn, so their confidence in it is close to chance* (chosen 2026-11-16; replaces the working title "LLMs are too certain of whatever they said"). The reasoning models are the exception, so the abstract and introduction should say early that the claim is about models that answer without reasoning first.
 
 ## Abstract (150 to 250 words; write last)
 

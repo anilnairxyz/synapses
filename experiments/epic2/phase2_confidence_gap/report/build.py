@@ -6,8 +6,8 @@ Default draft: report_full_draft.md (kept out of git). Writes build/report.tex a
 (also kept out of git). Needs pandoc and tectonic.
 
 Markdown conventions the script understands:
-- first line "# Title"; second line "Author · Affiliation · email" (" · "-separated; several authors
-  separated by ";");
+- first line "# Title"; then, optionally, a subtitle line in *italics*; then the line
+  "Author · Affiliation · email" (" · "-separated; several authors separated by ";");
 - "## Abstract" then one paragraph;
 - a figure is a line "**[Insert ... `path/to/figure.png`]**" followed by a caption paragraph
   starting "**Figure X.**" (or both on one line); numbering is automatic, "C" for appendix figures;
@@ -66,11 +66,14 @@ def main() -> None:
     src = HERE / (sys.argv[1] if len(sys.argv) > 1 else "report_full_draft.md")
     lines = src.read_text().splitlines()
     title = lines[0].lstrip("# ").strip()
+    head = [ln.strip() for ln in lines[1:6] if ln.strip()]
+    subtitle = head[0].strip("*") if head and head[0].startswith("*") else ""
+    author_line = head[1] if subtitle else head[0]
     authors = []
-    for a in lines[2].split(";"):
+    for a in author_line.split(";"):
         parts = [p.strip() for p in a.split("·")]
         authors.append(r"\\".join(latex(p) for p in parts if p))
-    rest = lines[3:]
+    rest = lines[lines.index(author_line) + 1:] if author_line in lines else lines[3:]
     k = rest.index("## Abstract")
     j = k + 1
     while not rest[j].strip():
@@ -82,7 +85,8 @@ def main() -> None:
                               input=md, capture_output=True, text=True, check=True).stdout
     template = (HERE / "apart.tex").read_text()
     author_block = r"\quad".join(r"\begin{tabular}[t]{c}" + a + r"\end{tabular}" for a in authors)
-    tex = (template.replace("$title$", title).replace("$authors$", author_block)
+    sub = (r"\\[8pt]{\normalfont\itshape\fontsize{13}{16}\selectfont " + latex(subtitle) + "}") if subtitle else ""
+    tex = (template.replace("$title$", title).replace("$subtitle$", sub).replace("$authors$", author_block)
            .replace("$abstract$", abstract).replace("$body$", tex_body))
     BUILD.mkdir(exist_ok=True)
     (BUILD / "report.tex").write_text(tex)
