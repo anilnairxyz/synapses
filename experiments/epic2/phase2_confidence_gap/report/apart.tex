@@ -1,6 +1,6 @@
 % Apart Research sprint report, matching the official Word template (apart_template.docx):
 % US Letter, 1 inch margins, Old Standard 11 pt, centred title between rules, italic abstract,
-% sprint footnote on the title. build.py fills the title, authors, abstract and body placeholders.
+% sprint footnote on "Apart Research". build.py fills the title, authors, abstract and body placeholders.
 \documentclass[11pt]{article}
 \usepackage[letterpaper,margin=1in]{geometry}
 \usepackage{fontspec}
@@ -43,7 +43,7 @@
 \noindent\rule{\textwidth}{1.2pt}
 \vspace{4pt}
 \begin{center}
-{\bfseries\fontsize{20}{24}\selectfont $title$\footnote{Research conducted at the \href{https://apartresearch.com/sprints/ai-x-epistemics-research-sprint-2026-11-13-to-2026-11-15}{AI x Epistemics Research Sprint}, November 2026.}$subtitle$}
+{\bfseries\fontsize{20}{24}\selectfont $title$$subtitle$}
 \end{center}
 \vspace{2pt}
 \noindent\rule{\textwidth}{0.6pt}
@@ -52,7 +52,7 @@ $authors$
 
 \vspace{6pt}
 \textbf{With}\\
-Apart Research
+Apart Research\footnote{Research conducted at the \href{https://apartresearch.com/sprints/ai-x-epistemics-research-sprint-2026-11-13-to-2026-11-15}{AI x Epistemics Research Sprint}, November 2026. Claude's contributions are detailed in the LLM Usage Statement.}
 \end{center}
 \endgroup
 
