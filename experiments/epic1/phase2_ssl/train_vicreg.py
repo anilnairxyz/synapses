@@ -5,7 +5,7 @@ stop-gradient -- both branches are perfectly symmetric, and the whole anti-colla
 mechanism lives in one explicit term of the loss (the variance hinge). Unlike SimSiam,
 the break-it experiment needs no special flag: the variance term already has a
 continuous weight, so `--var-weight 0.0` *is* the ablation. See
-docs/epic1_phase2_plan_26-07-2026.md (Step 5).
+planning/epic1_phase2_plan_26-07-2026.md (Step 5).
 
 Usage (on the PC, RTX 4090):
 

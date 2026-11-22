@@ -4,7 +4,7 @@
 
 **Short answer.** Yes, and it depends on the kind of question exactly as predicted. On **recall**, most of the signal is there before the model writes anything, and well beyond what the question's popularity predicts. On **computation**, the state before answering knows little more than "bigger numbers are harder"; the signal appears once the answer is written. The hidden state beats the model's stated confidence on every kind, and on perception it beats sample agreement and token probability too. Post-training leaves this representation largely intact: base and instruct models know about the same internally, though in Phase 1 they differed sharply in what they *output*.
 
-Plan: [`docs/epic2_phase1b_plan_08-11-2026.md`](../../../docs/epic2_phase1b_plan_08-11-2026.md). Phase 1: [`RESULTS.md`](RESULTS.md). Code: [`README.md`](README.md) (Phase 1B section). Completed 2026-11-08.
+Plan: [`planning/epic2_phase1b_plan_08-11-2026.md`](../../../planning/epic2_phase1b_plan_08-11-2026.md). Phase 1: [`RESULTS.md`](RESULTS.md). Code: [`README.md`](README.md) (Phase 1B section). Completed 2026-11-08.
 
 ## Setup
 

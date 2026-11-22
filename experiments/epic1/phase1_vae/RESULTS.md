@@ -1,6 +1,6 @@
 # Phase 1 — Results
 
-Close-out for Phase 1 (VAE / representation learning), covering Steps 1–7 of [`docs/epic1_phase1_plan_23-07-2026.md`](../../../docs/epic1_phase1_plan_23-07-2026.md). All runs: MLP VAE on MNIST (784–400–L), dynamic-binarized train / fixed-binarized test, Adam 1e-3, 30 epochs, seed 0, on the RTX 4090. Numbers below are from those runs; plots live under `outputs/…/plots/` (gitignored).
+Close-out for Phase 1 (VAE / representation learning), covering Steps 1–7 of [`planning/epic1_phase1_plan_23-07-2026.md`](../../../planning/epic1_phase1_plan_23-07-2026.md). All runs: MLP VAE on MNIST (784–400–L), dynamic-binarized train / fixed-binarized test, Adam 1e-3, 30 epochs, seed 0, on the RTX 4090. Numbers below are from those runs; plots live under `outputs/…/plots/` (gitignored).
 
 ## Per-step findings
 

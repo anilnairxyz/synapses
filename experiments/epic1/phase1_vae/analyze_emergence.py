@@ -4,7 +4,7 @@ Loads a run's log-spaced checkpoint series and tracks how the representation for
 training: the latent scatter condensing from noise into clusters (L=2), and metric curves
 (active units, rate, probe accuracy) vs epoch. Warm-up for the Phase 3 SAE feature-
 emergence study, which uses the same checkpoint series. See
-docs/epic1_phase1_plan_23-07-2026.md (Step 7).
+planning/epic1_phase1_plan_23-07-2026.md (Step 7).
 
 Usage:
     uv run python experiments/epic1/phase1_vae/analyze_emergence.py

@@ -2,7 +2,7 @@
 
 Load a trained VAE checkpoint, encode the MNIST test set to its latent means, and plot a
 2D scatter colored by digit with the N(0,I) prior overlaid. See
-``docs/epic1_phase1_plan_23-07-2026.md`` (Step 2) for what to read off it.
+``planning/epic1_phase1_plan_23-07-2026.md`` (Step 2) for what to read off it.
 
 Usage (on the PC, RTX 4090):
 

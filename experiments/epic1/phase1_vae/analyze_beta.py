@@ -3,7 +3,7 @@
 Loads the L=32 VAEs trained at β in {0, 0.1, 1, 5, 20} and plots the rate-distortion
 frontier (R = E[KL], D = recon), active units vs β (posterior collapse), and
 reconstructions (sharp at low β, blurry at high β). See
-docs/epic1_phase1_plan_23-07-2026.md (Step 6).
+planning/epic1_phase1_plan_23-07-2026.md (Step 6).
 
 Train the models first (L=32, β=1 already done in Step 5):
     uv run python experiments/epic1/phase1_vae/train.py --latent-dim 32 --beta 0

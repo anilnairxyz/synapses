@@ -4,7 +4,7 @@
 
 **Short answer.** Partly, and it depends heavily on *how* you ask. What models do (agreement across samples, token probabilities) tracks correctness well on every kind of question. What they *say* about their confidence tracks it on factual recall, barely on arithmetic, and not at all on letter-level tasks, even among questions of equal difficulty. Instruction-tuned models state near-certainty almost regardless of difficulty; the base model does not. Told the cost of a wrong answer, models react to *whether* there is a penalty but not to its size.
 
-Plan: [`docs/epic2_phase1_plan_03-11-2026.md`](../../../docs/epic2_phase1_plan_03-11-2026.md). Code and run instructions: [`README.md`](README.md). Every table and figure: [`results/`](results/README.md). Completed 2026-11-08.
+Plan: [`planning/epic2_phase1_plan_03-11-2026.md`](../../../planning/epic2_phase1_plan_03-11-2026.md). Code and run instructions: [`README.md`](README.md). Every table and figure: [`results/`](results/README.md). Completed 2026-11-08.
 
 ## Setup
 

@@ -2,7 +2,7 @@
 
 Load a trained 2D VAE, lay an inverse-CDF-spaced grid over the latent space, decode each
 point, and tile the results into one image. You see digits morph smoothly into their
-neighbors — the "manifold." See ``docs/epic1_phase1_plan_23-07-2026.md`` (Step 3).
+neighbors — the "manifold." See ``planning/epic1_phase1_plan_23-07-2026.md`` (Step 3).
 
 Usage:
 

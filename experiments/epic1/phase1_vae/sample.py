@@ -3,7 +3,7 @@
 For each digit c: sample z ~ N(mu_c, spread*I) near its latent cluster centroid, decode,
 and measure the hit rate (fraction the SmallCNN judge calls c). Then sample z ~ N(0,I)
 and chart the digit histogram — the generation imbalance. See
-docs/epic1_phase1_plan_23-07-2026.md (Step 4).
+planning/epic1_phase1_plan_23-07-2026.md (Step 4).
 
 Usage (needs a trained VAE and a trained classifier):
     uv run python experiments/epic1/phase1_vae/train_classifier.py

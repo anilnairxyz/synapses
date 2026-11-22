@@ -1,7 +1,7 @@
 """Phase 1 · Step 1 — baseline MLP VAE on MNIST.
 
 Trains, evaluates, logs one JSON line per epoch, and writes log-spaced checkpoints.
-See ``docs/epic1_phase1_plan_23-07-2026.md`` for what this step is for.
+See ``planning/epic1_phase1_plan_23-07-2026.md`` for what this step is for.
 
 Usage (on the PC, RTX 4090):
 

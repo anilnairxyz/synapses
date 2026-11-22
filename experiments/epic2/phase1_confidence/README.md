@@ -4,7 +4,7 @@
 
 Can a model tell when its own answer is solid from when it is on shaky ground? Five ways of eliciting confidence (stated after, sample agreement, Kalai threshold, stated before, token probabilities) compared on the same questions, across seven question categories with difficulty levels; calibration, discrimination and abstention per category.
 
-Plan: [`docs/epic2_phase1_plan_03-11-2026.md`](../../../docs/epic2_phase1_plan_03-11-2026.md).
+Plan: [`planning/epic2_phase1_plan_03-11-2026.md`](../../../planning/epic2_phase1_plan_03-11-2026.md).
 
 ## Files
 
@@ -46,7 +46,7 @@ uv run --extra evals inspect score <log.eval> \
 
 ## Phase 1B: internal-state probes
 
-Plan: [`docs/epic2_phase1b_plan_08-11-2026.md`](../../../docs/epic2_phase1b_plan_08-11-2026.md). The Phase 1 questions are the test set; the probes train on a separate set.
+Plan: [`planning/epic2_phase1b_plan_08-11-2026.md`](../../../planning/epic2_phase1b_plan_08-11-2026.md). The Phase 1 questions are the test set; the probes train on a separate set.
 
 - `build_train_questions.py`: Step 2. Builds `data/epic2/confidence/train_questions.jsonl` (5,995 answerable questions from the same generators, no overlap with the test set; committed with `git add -f`).
 - `run_4090.sh train`: Step 3. Plain answer (P) only on the training set for qwen3-8b, qwen3-1.7b and qwen3-8b-base; logs in `runs/4090/train/<config>/`. Then `judge_4090.sh 4090/train`.

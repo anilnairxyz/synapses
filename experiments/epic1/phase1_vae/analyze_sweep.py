@@ -3,7 +3,7 @@
 Loads the trained VAEs at L in {2, 8, 32, 128}, and for each computes test ELBO (recon/KL
 split), active units, per-dimension KL, and a linear-probe accuracy on mu — plus a
 raw-pixel probe baseline. Produces the sweep summary and the KL-spectrum small multiples.
-See docs/epic1_phase1_plan_23-07-2026.md (Step 5).
+See planning/epic1_phase1_plan_23-07-2026.md (Step 5).
 
 Train the models first (L=2 already done):
     uv run python experiments/epic1/phase1_vae/train.py --latent-dim 8

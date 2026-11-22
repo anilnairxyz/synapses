@@ -3,7 +3,7 @@
 The sample-side answer to representation collapse: negatives (every other image in the
 batch) make equal representations indistinguishable from the positive, so collapsing to a
 constant vector scores badly on the loss itself. No stop-gradient, no EMA, no variance
-term. See docs/epic1_phase2_plan_26-07-2026.md (Step 3).
+term. See planning/epic1_phase2_plan_26-07-2026.md (Step 3).
 
 Usage (on the PC, RTX 4090):
 

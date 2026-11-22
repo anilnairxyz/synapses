@@ -6,7 +6,7 @@ SimSiam's loss is NOT diagnostic of collapse -- a healthy run and a collapsed ru
 drive the loss toward -1, so every checkpoint also tracks `participation_ratio` (the
 effective rank of the feature covariance -- scale- and dimension-free, see ssl_eval.py)
 on the frozen backbone's features to tell them apart. See
-docs/epic1_phase2_plan_26-07-2026.md (Step 4).
+planning/epic1_phase2_plan_26-07-2026.md (Step 4).
 
 Usage (on the PC, RTX 4090):
 
